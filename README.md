@@ -57,7 +57,7 @@ Example
 
 Here’s an example of a simple custom task:
 
-'''
+```
 using Framework.Tasks;
 public class ExampleTask : BaseTask
 {
@@ -72,7 +72,7 @@ public class ExampleTask : BaseTask
         base.CompleteTask();
     }
 }
-'''
+```
 
 Documentation
 
