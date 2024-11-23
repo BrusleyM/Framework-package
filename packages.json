@@ -1,0 +1,19 @@
+{
+    "name": "com.vishnu.framework",
+    "version": "1.0.0",
+    "displayName": "Framework Vishnu",
+    "description": "A Unity framework for sequencial/non sequencial task management",
+    "unity": "2022.3",
+    "author": {
+        "name": "Brusley Masemola",
+        "email": "brusleymasemola@hotmail.com",
+        "url": "https://github.com/BrusleyM/Framework-package"
+    },
+    "samples": [
+        {
+            "displayName": "Test Scene",
+            "description": "A sample scene demonstrating how to use the framework.",
+            "path": "Samples~/Scenes/Test scene"
+        }
+    ]
+}
