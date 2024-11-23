@@ -58,7 +58,6 @@ Example
 Here’s an example of a simple custom task:
 
 using Framework.Tasks;
-
 public class ExampleTask : BaseTask
 {
     public override void StartTask()
@@ -66,7 +65,6 @@ public class ExampleTask : BaseTask
         Debug.Log("Task started!");
         CompleteTask();
     }
-
     public override void CompleteTask()
     {
         Debug.Log("Task completed!");
