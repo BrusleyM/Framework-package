@@ -73,7 +73,15 @@ jobs:
             urp: 17.3.0
             testFramework: 1.6.0
             interactionToolkit: 3.0.8
+    env:
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
     steps:
+      - name: Require the Unity license secret
+        run: |
+          if [ -z "$UNITY_LICENSE" ]; then
+            echo "::error::The repository secret UNITY_LICENSE is not set. Add UNITY_LICENSE, UNITY_EMAIL and UNITY_PASSWORD under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
