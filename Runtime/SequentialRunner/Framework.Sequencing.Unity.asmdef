@@ -1,7 +1,7 @@
 {
-    "name": "Framework.Extensions",
-    "rootNamespace": "Framework.Extensions",
-    "references": [],
+    "name": "Framework.Sequencing.Unity",
+    "rootNamespace": "Framework.Sequential",
+    "references": ["Framework.Tasks","Framework.Audio"],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

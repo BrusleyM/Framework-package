@@ -1,6 +1,6 @@
 {
-    "name": "Framework",
-    "rootNamespace": "Framework",
+    "name": "Framework.Audio",
+    "rootNamespace": "Framework.Audio",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

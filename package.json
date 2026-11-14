@@ -1,19 +1,19 @@
 {
     "name": "com.vishnu.framework",
-    "version": "1.0.0",
-    "displayName": "Framework Vishnu",
-    "description": "A Unity framework for sequencial/non sequencial task management",
+    "version": "2.0.0-preview.1",
+    "displayName": "Framework Sequencer",
+    "description": "A reusable sequencing framework for Unity: a pure C# sequence runner, event-driven step conditions and a thin Unity layer for guided flows such as tutorials.",
     "unity": "2022.3",
+    "license": "MIT",
+    "keywords": [
+        "sequence",
+        "tutorial",
+        "tasks",
+        "xr",
+        "flow"
+    ],
     "author": {
         "name": "Brusley Masemola",
-        "email": "brusleymasemola@hotmail.com",
         "url": "https://github.com/BrusleyM/Framework-package"
-    },
-    "samples": [
-        {
-            "displayName": "Test Scene",
-            "description": "A sample scene demonstrating how to use the framework.",
-            "path": "Samples~/Scenes/Test scene"
-        }
-    ]
+    }
 }
