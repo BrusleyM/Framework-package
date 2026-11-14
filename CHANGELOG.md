@@ -14,6 +14,9 @@
 Assembly references by name must be updated; references by GUID keep working except the removed `Framework.Extensions`.
 `GameObjectExtension.SetLayerRecursively` and `RevertLayerRecursively` were removed.
 
+### Fixed
+- `EnableTask` now completes as soon as it has enabled its GameObject, so sub tasks listed after it start.
+
 ### Changed
 - Skipping an `ActionTask` no longer plays its feedback audio.
 - The README described `TaskManager` and `BaseTask`, which never existed in the code; it now documents the real types.
