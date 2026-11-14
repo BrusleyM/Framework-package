@@ -15,9 +15,11 @@ Assembly references by name must be updated; references by GUID keep working exc
 `GameObjectExtension.SetLayerRecursively` and `RevertLayerRecursively` were removed.
 
 ### Changed
+- Skipping an `ActionTask` no longer plays its feedback audio.
+- The README described `TaskManager` and `BaseTask`, which never existed in the code; it now documents the real types.
 - Assemblies renamed under the `Framework.*` prefix and re-layered: `Framework.Audio`, `Framework.CheckPoints`, `Framework.Outline`, `Framework.Tasks`, `Framework.Tools`, `Framework.Sequencing.Unity`.
 - `Framework.Outline` is now its own assembly instead of living in a catch-all root assembly.
-- The manifest no longer advertises a Package Manager sample. The `Samples` folder holds the Test scene for developing this package and is not importable through Package Manager.
+- The manifest no longer advertises a Package Manager sample. The `Samples` folder holds the Test scene and ships with the package, but it is not a Package Manager sample.
 
 ### Changed (outline)
 - Outline shaders are URP HLSL and SRP Batcher compatible; the package now depends on the Universal Render Pipeline.
@@ -31,6 +33,5 @@ Assembly references by name must be updated; references by GUID keep working exc
 - MIT license.
 - `Framework.Sequencing.Core`: pure C# `SequenceRunner` with start, pause, resume, skip, back, restart and cancel, plus instant, delay, wait-for-condition, parallel and reminding steps and a fluent `Sequence` builder.
 - `SequentialTask` now runs on the runner and exposes pause, resume, back, restart and cancel. `Run()` can start a finished sequence again and no longer clears the task list.
-- Skipping an `ActionTask` no longer plays its feedback audio.
 - Event-driven conditions: `SignalCondition`, `ColliderContactCondition`, `InteractableCondition`.
 - EditMode and PlayMode tests.

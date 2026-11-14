@@ -62,7 +62,7 @@ A condition implements `IStepCondition`: it is armed when the step starts and di
 
 - `SignalCondition`: call `Raise()` from any `UnityEvent`. Hand pose events and button events plug in here. Signals raised while it is not armed are ignored, not remembered.
 - `ColliderContactCondition`: satisfied when a collider on an accepted layer touches this one, including contact that already exists. It accepts no layers until you choose them.
-- `InteractableCondition` (XRI 3.x): satisfied on hover or select, or on activate, of an interactable. It also completes at once if the interactable is already hovered or selected. Quest hand tracking has no activate action by default, so use select for pokes and grabs.
+- `InteractableCondition` (XRI 3.x): satisfied on hover or select, or on activate, of an interactable. It also completes at once if the interactable is already hovered or selected. Whether activate fires depends on your interaction profile, so select is the reliable choice for pokes and grabs.
 
 ## Scene authoring
 
@@ -70,7 +70,7 @@ Add a `SequentialTask` to a GameObject, assign an `AudioSource` and list `Task` 
 
 `Run()` does nothing while a sequence is in progress, and starts over once it has ended. `Play(runner)` cancels the current runner first. `Pause`, `Resume`, `SkipCurrentTask`, `GoBack`, `Restart` and `Cancel` act on the running sequence. The component must be active and enabled to run.
 
-The Test scene lives at `Samples/Scenes/Test scene.unity`. It is for developing this package and is not offered as a Package Manager sample.
+The Test scene lives at `Samples/Scenes/Test scene.unity`. The `Samples` folder is imported and compiled with the package; it is not offered as a Package Manager sample.
 
 ## Write your own step
 
@@ -91,7 +91,7 @@ Call `Finish()` from any event handler to complete the step. `OnExit` runs on ev
 
 ## Installation
 
-Add `https://github.com/BrusleyM/Framework-package.git#develop` in Package Manager once the 2.0 work is merged to `develop`. Before that, use the branch you need after `#`.
+Add `https://github.com/BrusleyM/Framework-package.git#develop` in Package Manager once the 2.0 work is merged to `develop`. Before that, use the name of the branch you want after `#`, and a `#2.0.0-preview.1` tag once it is released.
 
 ## Tests
 
@@ -102,5 +102,6 @@ Add `https://github.com/BrusleyM/Framework-package.git#develop` in Package Manag
 - Only `InteractableCondition` is provided for XR. Wire Meta hand pose events to a `SignalCondition` for gestures.
 - The outline shaders are URP only and rely on a stencil capable depth buffer. They have not been checked on a Quest.
 - `OutlineWidth` is a view-space thickness, so the visible width varies with field of view.
+- `ColliderContactCondition` is one shot and will miss a ball resting asleep on the collider when armed.
 - A task that is still settling, for example `ActionTask` playing feedback audio, is checked on each runner tick until it settles.
 - A step instance holds its own state. Build a new sequence for each run instead of reusing step instances across runners.
