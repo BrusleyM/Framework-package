@@ -56,7 +56,11 @@ namespace Framework.Sequencing
             Execute(() =>
             {
                 LeaveActiveStep(ExitReason.Restarted);
-                BeginFromFirstStep();
+
+                if (State != SequenceState.Faulted)
+                {
+                    BeginFromFirstStep();
+                }
             });
         }
 
@@ -73,10 +77,13 @@ namespace Framework.Sequencing
 
         public void Pause()
         {
-            if (State == SequenceState.Running)
+            Execute(() =>
             {
-                ChangeState(SequenceState.Paused);
-            }
+                if (State == SequenceState.Running)
+                {
+                    ChangeState(SequenceState.Paused);
+                }
+            });
         }
 
         public void Resume()
@@ -254,8 +261,23 @@ namespace Framework.Sequencing
             var index = CurrentIndex;
             _activeStep = null;
             step.Finished -= OnActiveStepFinished;
-            Guard(() => step.Exit(reason));
+
+            Exception exitFailure = null;
+            try
+            {
+                step.Exit(reason);
+            }
+            catch (Exception failure)
+            {
+                exitFailure = failure;
+            }
+
             Notify(() => StepExited?.Invoke(step, index, reason));
+
+            if (exitFailure != null)
+            {
+                Fault(exitFailure);
+            }
         }
 
         private void FinishSequence()

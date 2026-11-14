@@ -143,10 +143,15 @@ public class Outline : MonoBehaviour
 
     public void EnableOutline()
     {
-        if (!outlineOn)
+        if (!outlineOn && outlineMaskMaterial != null && outlineFillMaterial != null)
         {
             foreach (var renderer in renderers)
             {
+                if (renderer == null)
+                {
+                    continue;
+                }
+
                 var materials = renderer.sharedMaterials.ToList();
                 materials.Add(outlineMaskMaterial);
                 materials.Add(outlineFillMaterial);

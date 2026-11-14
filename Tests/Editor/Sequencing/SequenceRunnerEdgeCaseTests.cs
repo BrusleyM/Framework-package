@@ -238,5 +238,62 @@ namespace Framework.Sequencing.Tests
             _second.FinishNow();
             Assert.AreEqual(SequenceState.Completed, runner.State);
         }
+
+        [Test]
+        public void A_throwing_state_handler_on_pause_surfaces_from_the_pause_call_not_a_later_call()
+        {
+            var runner = RunnerOf(_first);
+            runner.Start();
+            runner.StateChanged += state =>
+            {
+                if (state == SequenceState.Paused)
+                {
+                    throw new InvalidOperationException("handler broke");
+                }
+            };
+
+            Assert.Throws<InvalidOperationException>(() => runner.Pause());
+            Assert.DoesNotThrow(() => runner.Resume());
+        }
+
+        [Test]
+        public void Restarting_after_a_faulting_exit_stays_faulted_without_entering_a_step()
+        {
+            var runner = RunnerOf(new ThrowingStep("stubborn", false, true), _second);
+            runner.Start();
+
+            runner.Restart();
+
+            Assert.AreEqual(SequenceState.Faulted, runner.State);
+            Assert.IsNull(runner.CurrentStep);
+            Assert.IsEmpty(_journal);
+        }
+
+        [Test]
+        public void A_faulting_exit_reports_the_step_exit_before_the_fault()
+        {
+            var order = new List<string>();
+            var runner = RunnerOf(new ThrowingStep("stubborn", false, true));
+            runner.StepExited += (step, index, reason) => order.Add("exited");
+            runner.Faulted += exception => order.Add("faulted");
+            runner.Start();
+
+            runner.Cancel();
+
+            Assert.AreEqual(new[] { "exited", "faulted" }, order);
+        }
+
+        [Test]
+        public void A_faulting_enter_reports_the_step_exit_before_the_fault()
+        {
+            var order = new List<string>();
+            var runner = RunnerOf(new ThrowingStep("broken", true));
+            runner.StepExited += (step, index, reason) => order.Add("exited");
+            runner.Faulted += exception => order.Add("faulted");
+
+            runner.Start();
+
+            Assert.AreEqual(new[] { "exited", "faulted" }, order);
+        }
     }
 }

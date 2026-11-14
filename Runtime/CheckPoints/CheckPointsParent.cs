@@ -40,7 +40,10 @@ namespace Framework.CheckPoints
         {
             foreach (var point in _points)
             {
-                point.ResetPoint();
+                if (point != null)
+                {
+                    point.ResetPoint();
+                }
             }
         }
     }
