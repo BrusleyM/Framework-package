@@ -110,7 +110,7 @@ Everything runs in this repository's own GitHub Actions and depends on no consum
 The version lives only in `package.json`. Choose the bump when you run `release-prepare`: `current` releases the version already written, `stable` drops a `-preview.N` label, `patch`, `minor` and `major` bump that number and reset the lower ones, and `preview` continues `-preview.N`. Pre-releases are published as GitHub pre-releases.
 
 Set up once:
-- Secrets `UNITY_LICENSE`, `UNITY_EMAIL` and `UNITY_PASSWORD` for the Unity test jobs, as described in the game-ci activation guide.
+- Secrets `UNITY_EMAIL` and `UNITY_PASSWORD` (a Unity Personal account) for the Unity test jobs.
 - Repository setting Actions > General > Allow GitHub Actions to create and approve pull requests.
 - Branch protection on `develop` and `master` requiring the CI jobs, so a release cannot merge with failing tests.
 
