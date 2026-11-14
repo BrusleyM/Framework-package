@@ -16,14 +16,7 @@
         "name": "Brusley Masemola",
         "url": "https://github.com/BrusleyM/Framework-package"
     },
-    "samples": [
-        {
-            "displayName": "Test Scene",
-            "description": "A guided task sequence driven by the sequencer.",
-            "path": "Samples"
-        }
-    ],
     "dependencies": {
-        "com.unity.render-pipelines.universal": "14.0.0"
+        "com.unity.render-pipelines.universal": "14.0.8"
     }
 }

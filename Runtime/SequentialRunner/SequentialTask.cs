@@ -44,8 +44,8 @@ namespace Framework.Sequencing
 
             _runner = runner;
             _runner.Faulted += LogFault;
+            EnsureClockIsRunning();
             _runner.Start();
-            StartClock();
         }
 
         public void Pause() => _runner?.Pause();
@@ -56,7 +56,18 @@ namespace Framework.Sequencing
 
         public void GoBack() => _runner?.GoBack();
 
-        public void Restart() => _runner?.Restart();
+        public void Restart()
+        {
+            if (_runner == null)
+            {
+                return;
+            }
+
+            _runner.Faulted -= LogFault;
+            _runner.Faulted += LogFault;
+            EnsureClockIsRunning();
+            _runner.Restart();
+        }
 
         public void Cancel()
         {
@@ -104,10 +115,17 @@ namespace Framework.Sequencing
             return _audioPlayer;
         }
 
-        private void StartClock()
+        private void EnsureClockIsRunning()
         {
-            StopClock();
-            _clock = StartCoroutine(TickWhileInProgress(_runner));
+            if (!isActiveAndEnabled)
+            {
+                throw new System.InvalidOperationException($"{name} must be active and enabled to run a sequence.");
+            }
+
+            if (_clock == null)
+            {
+                _clock = StartCoroutine(TickWhileInProgress());
+            }
         }
 
         private void StopClock()
@@ -119,11 +137,19 @@ namespace Framework.Sequencing
             }
         }
 
-        private IEnumerator TickWhileInProgress(SequenceRunner runner)
+        private IEnumerator TickWhileInProgress()
         {
-            while (runner.IsInProgress)
+            while (_runner != null && (_runner.State == SequenceState.Idle || _runner.IsInProgress))
             {
-                runner.Advance(Time.deltaTime);
+                try
+                {
+                    _runner.Advance(Time.deltaTime);
+                }
+                catch (System.Exception exception)
+                {
+                    Debug.LogException(exception, this);
+                }
+
                 yield return null;
             }
 

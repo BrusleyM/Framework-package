@@ -31,6 +31,12 @@ namespace Framework.Tasks
             _playback = StartCoroutine(PlayClipsOneAfterAnother());
         }
 
+        public override void Skip()
+        {
+            CancelTask();
+            base.Skip();
+        }
+
         public override void CancelTask()
         {
             if (_playback != null)

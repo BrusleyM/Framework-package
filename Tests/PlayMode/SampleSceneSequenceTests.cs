@@ -94,6 +94,32 @@ namespace Framework.Sequencing.Tests
         }
 
         [UnityTest]
+        public IEnumerator Restarting_a_finished_sequence_keeps_it_ticking_so_it_can_finish_again()
+        {
+            _sequence.Run();
+            yield return null;
+            for (var attempt = 0; attempt < _sequence.TaskList.Count * 2 && _sequence.IsRunning; attempt++)
+            {
+                _sequence.SkipCurrentTask();
+                yield return null;
+            }
+            Assert.AreEqual(SequenceState.Completed, _sequence.Runner.State);
+
+            _sequence.Restart();
+            yield return null;
+            yield return null;
+            Assert.AreEqual(SequenceState.Running, _sequence.Runner.State);
+            Assert.AreEqual(0, _sequence.Runner.CurrentIndex);
+
+            for (var attempt = 0; attempt < _sequence.TaskList.Count * 2 && _sequence.IsRunning; attempt++)
+            {
+                _sequence.SkipCurrentTask();
+                yield return null;
+            }
+            Assert.AreEqual(SequenceState.Completed, _sequence.Runner.State);
+        }
+
+        [UnityTest]
         public IEnumerator Cancelling_stops_the_sequence_and_a_fresh_run_starts_over()
         {
             _sequence.Run();

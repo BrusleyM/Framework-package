@@ -42,6 +42,8 @@ namespace Framework.Sequencing
             OnExit(reason);
         }
 
+        protected bool IsWaiting => _isActive && !_hasFinished;
+
         protected void Finish()
         {
             if (!_isActive || _hasFinished)

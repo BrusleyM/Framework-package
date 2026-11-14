@@ -107,6 +107,34 @@ namespace Framework.Sequencing.Tests
             Assert.AreEqual(SequenceState.Faulted, _runner.State);
         }
 
+        [Test]
+        public void A_task_destroyed_while_running_does_not_fault_the_sequence_when_it_is_cancelled()
+        {
+            _runner.Start();
+            Object.DestroyImmediate(_host);
+
+            _runner.Cancel();
+
+            Assert.AreEqual(SequenceState.Cancelled, _runner.State);
+        }
+
+        [Test]
+        public void A_listener_that_cancels_from_the_complete_event_cleans_up_the_next_task_it_started()
+        {
+            var secondHost = new GameObject("second host");
+            var secondTask = secondHost.AddComponent<ProbeTask>();
+            var runner = new SequenceRunner("two", new ISequenceStep[] { new TaskStep(_task, null), new TaskStep(secondTask, null) });
+            _task.OnCompleteTask.AddListener(runner.Cancel);
+            runner.Start();
+
+            _task.CompleteFromOutside();
+
+            Assert.AreEqual(SequenceState.Cancelled, runner.State);
+            Assert.AreEqual(1, secondTask.CancelCount);
+            Assert.IsNull(runner.CurrentStep);
+            Object.DestroyImmediate(secondHost);
+        }
+
         private sealed class ProbeTask : Task
         {
             public int StartCount { get; private set; }

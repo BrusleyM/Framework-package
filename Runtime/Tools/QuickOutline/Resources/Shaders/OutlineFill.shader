@@ -20,6 +20,7 @@ Shader "Custom/Outline Fill"
         Pass
         {
             Name "Fill"
+            Tags { "LightMode" = "SRPDefaultUnlit" }
             Cull Off
             ZTest [_ZTest]
             ZWrite Off
