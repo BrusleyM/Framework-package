@@ -1,44 +1,50 @@
-using System.Collections;
-using UnityEngine;
-
 namespace Framework.Tasks
 {
     public class SequentialHighlightTask : HighlightTask
     {
-        private Coroutine _highlightRoutine;
+        private Outline _currentOutline;
+        private int _highlightIndex;
 
         public override void Cancel()
         {
-            StopHighlighting();
+            StopWatchingCurrentOutline();
             base.Cancel();
         }
 
         protected override void EnableOutline()
         {
-            StopHighlighting();
-            _highlightRoutine = StartCoroutine(HighlightOneAfterAnother());
+            _highlightIndex = -1;
+            HighlightNext();
         }
 
-        private void StopHighlighting()
+        private void HighlightNext()
         {
-            if (_highlightRoutine != null)
+            StopWatchingCurrentOutline();
+            _highlightIndex++;
+
+            if (_highlightIndex >= gameObjectsToHighlight.Length)
             {
-                StopCoroutine(_highlightRoutine);
-                _highlightRoutine = null;
+                return;
             }
+
+            _currentOutline = FindOutline(gameObjectsToHighlight[_highlightIndex]);
+            _currentOutline.Disabled += OnCurrentOutlineDisabled;
+            _currentOutline.EnableOutline();
         }
 
-        private IEnumerator HighlightOneAfterAnother()
+        private void OnCurrentOutlineDisabled()
         {
-            foreach (var highlighted in gameObjectsToHighlight)
-            {
-                var outline = FindOutline(highlighted);
-                outline.EnableOutline();
-                yield return new WaitUntil(() => !outline.IsOutLined);
-                MarkComplete();
-            }
+            MarkComplete();
+            HighlightNext();
+        }
 
-            _highlightRoutine = null;
+        private void StopWatchingCurrentOutline()
+        {
+            if (_currentOutline != null)
+            {
+                _currentOutline.Disabled -= OnCurrentOutlineDisabled;
+                _currentOutline = null;
+            }
         }
     }
 }

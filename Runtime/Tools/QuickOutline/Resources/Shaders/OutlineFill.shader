@@ -1,81 +1,83 @@
-﻿//
-//  OutlineFill.shader
-//  QuickOutline
-//
-//  Created by Chris Nolet on 2/21/18.
-//  Copyright © 2018 Chris Nolet. All rights reserved.
-//
-
-Shader "Custom/Outline Fill" {
-  Properties {
-    [Enum(UnityEngine.Rendering.CompareFunction)] _ZTest("ZTest", Float) = 0
-
-    _OutlineColor("Outline Color", Color) = (1, 1, 1, 1)
-    _OutlineWidth("Outline Width", Range(0, 10)) = 2
-  }
-
-  SubShader {
-    Tags {
-      "Queue" = "Transparent+110"
-      "RenderType" = "Transparent"
-      "DisableBatching" = "True"
+Shader "Custom/Outline Fill"
+{
+    Properties
+    {
+        [Enum(UnityEngine.Rendering.CompareFunction)] _ZTest("ZTest", Float) = 0
+        _OutlineColor("Outline Color", Color) = (1, 1, 1, 1)
+        _OutlineWidth("Outline Width", Range(0, 10)) = 2
     }
 
-    Pass {
-      Name "Fill"
-      Cull Off
-      ZTest [_ZTest]
-      ZWrite Off
-      Blend SrcAlpha OneMinusSrcAlpha
-      ColorMask RGB
+    SubShader
+    {
+        Tags
+        {
+            "RenderPipeline" = "UniversalPipeline"
+            "Queue" = "Transparent+110"
+            "RenderType" = "Transparent"
+            "DisableBatching" = "True"
+        }
 
-      Stencil {
-        Ref 1
-        Comp NotEqual
-      }
+        Pass
+        {
+            Name "Fill"
+            Cull Off
+            ZTest [_ZTest]
+            ZWrite Off
+            Blend SrcAlpha OneMinusSrcAlpha
+            ColorMask RGB
 
-      CGPROGRAM
-      #include "UnityCG.cginc"
+            Stencil
+            {
+                Ref 1
+                Comp NotEqual
+            }
 
-      #pragma vertex vert
-      #pragma fragment frag
+            HLSLPROGRAM
+            #pragma vertex Vertex
+            #pragma fragment Fragment
+            #pragma multi_compile_instancing
 
-      struct appdata {
-        float4 vertex : POSITION;
-        float3 normal : NORMAL;
-        float3 smoothNormal : TEXCOORD3;
-        UNITY_VERTEX_INPUT_INSTANCE_ID
-      };
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-      struct v2f {
-        float4 position : SV_POSITION;
-        fixed4 color : COLOR;
-        UNITY_VERTEX_OUTPUT_STEREO
-      };
+            CBUFFER_START(UnityPerMaterial)
+                float _ZTest;
+                half4 _OutlineColor;
+                float _OutlineWidth;
+            CBUFFER_END
 
-      uniform fixed4 _OutlineColor;
-      uniform float _OutlineWidth;
+            struct Attributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
+                float3 smoothNormalOS : TEXCOORD3;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
 
-      v2f vert(appdata input) {
-        v2f output;
+            struct Varyings
+            {
+                float4 positionCS : SV_POSITION;
+                UNITY_VERTEX_OUTPUT_STEREO
+            };
 
-        UNITY_SETUP_INSTANCE_ID(input);
-        UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+            Varyings Vertex(Attributes input)
+            {
+                Varyings output;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
-        float3 normal = any(input.smoothNormal) ? input.smoothNormal : input.normal;
-        float3 viewPosition = UnityObjectToViewPos(input.vertex);
-        float3 viewNormal = normalize(mul((float3x3)UNITY_MATRIX_IT_MV, normal));
+                float3 normalOS = any(input.smoothNormalOS) ? input.smoothNormalOS : input.normalOS;
+                float3 positionVS = TransformWorldToView(TransformObjectToWorld(input.positionOS.xyz));
+                float3 normalVS = normalize(TransformWorldToViewDir(TransformObjectToWorldNormal(normalOS)));
 
-        output.position = UnityViewToClipPos(viewPosition + viewNormal * -viewPosition.z * _OutlineWidth / 1000.0);
-        output.color = _OutlineColor;
+                output.positionCS = TransformWViewToHClip(positionVS + normalVS * -positionVS.z * _OutlineWidth / 1000.0);
+                return output;
+            }
 
-        return output;
-      }
-
-      fixed4 frag(v2f input) : SV_Target {
-        return input.color;
-      }
-      ENDCG
+            half4 Fragment(Varyings input) : SV_Target
+            {
+                return _OutlineColor;
+            }
+            ENDHLSL
+        }
     }
-  }
 }
