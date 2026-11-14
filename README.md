@@ -1,104 +1,83 @@
-*Framework Vishnu*
+# Framework Sequencer
 
-A powerful Unity framework for creating and managing sequential and non-sequential tasks, designed to simplify task workflows and enhance modularity in Unity projects.
+A reusable sequencing framework for Unity. Tell a guided flow, such as a tutorial, as an ordered list of steps. Steps finish through events, and the whole sequence can be skipped, rewound, paused, restarted or cancelled with clean-up guaranteed.
 
-Features:
-•🚀 Task Management: Effortlessly create and manage sequential or non-sequential tasks.
-•📦 Lightweight & Modular: Designed for flexibility and easy integration into any Unity project.
-•🎯 Sample Scene Included: Demonstrates how to use the framework with a functional example.
-•💻 Editor Integration: Simplifies task setup and management with user-friendly interfaces.
+## Layers
 
-Installation
+| Assembly | Depends on | Purpose |
+|---|---|---|
+| `Framework.Sequencing.Core` | nothing, no engine references | `SequenceRunner`, steps, builder. Time is supplied by the caller. |
+| `Framework.Sequencing.Unity` | Core, Tasks, Audio | `SequentialTask` runner component, `TaskStep`, signal and collider conditions |
+| `Framework.Sequencing.Xr` | Core, XR Interaction Toolkit 3 | `InteractableCondition`. Only compiles when XRI is installed. |
+| `Framework.Tasks` | Audio, CheckPoints, Outline | Scene-authored `Task` components |
+| `Framework.Outline`, `Framework.Audio`, `Framework.CheckPoints`, `Framework.Tools` | | Supporting tools |
 
-Option 1: Add via Git URL
+## Tell a sequence in code
 
-(I)	Open your Unity project.
-(II)	Navigate to Window > Package Manager.
-(III)	Click the + button and select Add package from git URL….
-(IV)	Paste the following URL:
+```csharp
+var tutorial = Sequence.Named("Controllers tutorial")
+    .Do("Show welcome hint", ShowWelcomeHint)
+    .Wait(2f)
+    .WaitFor("Grab the paddle", paddleGrabbed)
+    .Together("Both hands ready", leftHandReady, rightHandReady)
+    .Do("Celebrate", PlayCelebration)
+    .Build();
 
-	https://github.com/BrusleyM/Framework-package.git
-
-
-
-Option 2: Manual Installation
-
-•Clone the repository:
-	
- 	git clone https://github.com/BrusleyM/Framework-package.git
-•Copy the package folder into your Unity project’s Packages directory.
-
-Getting Started
-
-Import the Sample Scene
-
-• Open Window > Package Manager.
-• Select Framework Vishnu from the list of packages.
-• Under Samples, click Import next to the “Test Scene” sample.
-
-The sample will be added to your project at:
-
-Assets/Samples/Framework Vishnu/<version>/Scenes/Test scene.unity
-
-Quick Start Guide
-
-1. Set up a Task Manager:
-   • Create a new GameObject and attach the TaskManager script.
-2. Define Tasks:
-   • Create new task scripts inheriting from BaseTask.
-   • Implement task-specific logic by overriding relevant methods (StartTask, CompleteTask, etc.).
-3. Add Tasks to Task Manager:
-   • Populate the TaskManager with your custom tasks in the Unity Inspector.
-
-Example
-
-Here’s an example of a simple custom task:
-
+sequentialTask.Play(tutorial);
 ```
-using Framework.Tasks;
-public class ExampleTask : BaseTask
+
+`SequenceRunner` is plain C#. Drive it yourself with `Advance(deltaSeconds)` in tests or in any engine loop.
+
+```csharp
+tutorial.Start();
+tutorial.Advance(0.016f);
+tutorial.SkipCurrentStep();
+tutorial.GoBack();
+tutorial.Pause();
+tutorial.Resume();
+tutorial.Restart();
+tutorial.Cancel();
+```
+
+## Steps that wait for the player
+
+A condition implements `IStepCondition`: it is armed when the step starts and disarmed when the step ends, whatever the reason.
+
+- `SignalCondition`: call `Raise()` from any `UnityEvent`. Hand pose events and button events plug in here.
+- `ColliderContactCondition`: satisfied when an accepted layer touches this collider, for example the ball hitting a paddle.
+- `InteractableCondition` (XRI 3): satisfied on hover, select or activate of an interactable, for example poking a button or grabbing a paddle.
+
+## Scene authoring
+
+Add a `SequentialTask` to a GameObject, assign an `AudioSource` and list `Task` components. `ActionTask` combines narration, reminders, sub tasks and check points. `WaitForConditionTask` waits for any condition component. Call `Run()`, then use `Pause`, `Resume`, `SkipCurrentTask`, `GoBack`, `Restart` and `Cancel`.
+
+## Write your own step
+
+```csharp
+public sealed class ShowHintStep : StepBase
 {
-    public override void StartTask()
-    {
-        Debug.Log("Task started!");
-        CompleteTask();
-    }
-    public override void CompleteTask()
-    {
-        Debug.Log("Task completed!");
-        base.CompleteTask();
-    }
+    private readonly GameObject _hint;
+
+    public ShowHintStep(GameObject hint) : base("Show hint") { _hint = hint; }
+
+    protected override void OnEnter() => _hint.SetActive(true);
+
+    protected override void OnExit(ExitReason reason) => _hint.SetActive(false);
 }
 ```
 
-Documentation
+Call `Finish()` from any event handler to complete the step. `OnExit` runs on every exit path (completed, skipped, rewound, restarted, cancelled), so clean up there.
 
-Core Components
+## Installation
 
-• BaseTask: The foundation for all tasks. Extend this class to create custom tasks.
-• TaskManager: Manages the execution and flow of tasks.
-• Utilities: Includes helper functions for common task-related operations.
+Add `https://github.com/BrusleyM/Framework-package.git#develop` in Package Manager. Requires Unity 2022.3 or newer and the Universal Render Pipeline.
 
-Samples
+## Tests
 
-The package includes a sample scene to demonstrate:
-• Task setup and execution.
-• Sequential and non-sequential task flows.
+`Tests/Editor` holds EditMode tests for the core and the task adapter. `Tests/PlayMode` walks the Test scene sample through skip, pause, back, restart and cancel. Add the package to `testables` or keep it under `Assets` to run them.
 
-Contributing
+## Known limitations
 
-We welcome contributions to improve this framework! To contribute:
-1. Fork the repository.
-2. Create a new branch for your feature or fix.
-3. Submit a pull request with a detailed description.
-
-Known Issues
-
-• None at the moment. Please report issues via GitHub Issues.
-
-Contact
-
-For questions, feedback, or support:
-	•	Author: Brusley Masemola
-	•	Email: brusleymasemola@hotmail.com
-	•	GitHub: BrusleyM
+- XR adapters other than `InteractableCondition` are not provided. Wire Meta hand pose events to a `SignalCondition`.
+- The outline shaders are URP only.
+- `ActionTask` waits for feedback audio to finish by checking the audio source each frame.

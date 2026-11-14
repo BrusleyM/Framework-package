@@ -17,3 +17,7 @@
 
 ### Added
 - MIT license.
+- `Framework.Sequencing.Core`: pure C# `SequenceRunner` with start, pause, resume, skip, back, restart and cancel, plus instant, delay, wait-for-condition, parallel and reminding steps and a fluent `Sequence` builder.
+- `SequentialTask` now runs on the runner and exposes pause, resume, back, restart and cancel.
+- Event-driven conditions: `SignalCondition`, `ColliderContactCondition`, `InteractableCondition`.
+- EditMode and PlayMode tests.
