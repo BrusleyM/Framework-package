@@ -15,6 +15,11 @@ namespace Framework.Sequencing
 
         public SequenceBuilder Then(ISequenceStep step)
         {
+            if (step == null)
+            {
+                throw new ArgumentNullException(nameof(step));
+            }
+
             _steps.Add(step);
             return this;
         }
@@ -26,7 +31,7 @@ namespace Framework.Sequencing
 
         public SequenceBuilder Wait(float seconds)
         {
-            return Then(new DelayStep($"Wait {seconds}s", seconds));
+            return Then(new DelayStep(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Wait {0}s", seconds), seconds));
         }
 
         public SequenceBuilder WaitFor(string stepName, IStepCondition condition)

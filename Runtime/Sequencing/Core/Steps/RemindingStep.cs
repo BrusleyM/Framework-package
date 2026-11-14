@@ -9,7 +9,7 @@ namespace Framework.Sequencing
         private readonly Action _remind;
         private float _secondsSinceLastReminder;
 
-        public RemindingStep(ISequenceStep inner, float intervalSeconds, Action remind) : base(inner.Name)
+        public RemindingStep(ISequenceStep inner, float intervalSeconds, Action remind) : base(NameOf(inner))
         {
             _inner = inner;
             _intervalSeconds = intervalSeconds;
@@ -26,7 +26,7 @@ namespace Framework.Sequencing
         protected override void OnAdvance(float deltaSeconds)
         {
             _inner.Advance(deltaSeconds);
-            if (_intervalSeconds <= 0f)
+            if (!IsWaiting || _intervalSeconds <= 0f)
             {
                 return;
             }
@@ -34,7 +34,7 @@ namespace Framework.Sequencing
             _secondsSinceLastReminder += deltaSeconds;
             if (_secondsSinceLastReminder >= _intervalSeconds)
             {
-                _secondsSinceLastReminder = 0f;
+                _secondsSinceLastReminder %= _intervalSeconds;
                 _remind?.Invoke();
             }
         }
@@ -43,6 +43,16 @@ namespace Framework.Sequencing
         {
             _inner.Finished -= Finish;
             _inner.Exit(reason);
+        }
+
+        private static string NameOf(ISequenceStep inner)
+        {
+            if (inner == null)
+            {
+                throw new ArgumentNullException(nameof(inner));
+            }
+
+            return inner.Name;
         }
     }
 }

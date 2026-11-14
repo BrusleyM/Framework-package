@@ -43,10 +43,22 @@ namespace Framework.Sequencing.Tests
     internal sealed class ThrowingStep : StepBase
     {
         private readonly bool _throwsOnEnter;
+        private readonly bool _throwsOnExit;
 
-        public ThrowingStep(string name, bool throwsOnEnter) : base(name)
+        public ThrowingStep(string name, bool throwsOnEnter, bool throwsOnExit = false) : base(name)
         {
             _throwsOnEnter = throwsOnEnter;
+            _throwsOnExit = throwsOnExit;
+        }
+
+        public void FinishNow() => Finish();
+
+        protected override void OnExit(ExitReason reason)
+        {
+            if (_throwsOnExit)
+            {
+                throw new InvalidOperationException("step could not clean up");
+            }
         }
 
         protected override void OnEnter()
