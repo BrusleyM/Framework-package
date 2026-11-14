@@ -1,33 +1,44 @@
-using System;
 using System.Collections;
-using Framework.CheckPoints;
 using UnityEngine;
 
 namespace Framework.Tasks
 {
     public class SequentialHighlightTask : HighlightTask
     {
-        protected override void EnableOutline()
+        private Coroutine _highlightRoutine;
+
+        public override void Cancel()
         {
-            StartCoroutine(SequentialHighlightRoutine());
+            StopHighlighting();
+            base.Cancel();
         }
 
-        private IEnumerator SequentialHighlightRoutine()
+        protected override void EnableOutline()
         {
-            foreach (var gameObject in gameObjectsToHighlight)
+            StopHighlighting();
+            _highlightRoutine = StartCoroutine(HighlightOneAfterAnother());
+        }
+
+        private void StopHighlighting()
+        {
+            if (_highlightRoutine != null)
             {
-                var outline = gameObject.GetComponent<Outline>();
-                if (outline != null)
-                {
-                    outline.EnableOutline();
-                    yield return new WaitUntil(() => !outline.IsOutLined);
-                    IsComplete = true;
-                }
-                else
-                {
-                    throw new InvalidOperationException("Outline component not found on GameObject.");
-                }
+                StopCoroutine(_highlightRoutine);
+                _highlightRoutine = null;
             }
+        }
+
+        private IEnumerator HighlightOneAfterAnother()
+        {
+            foreach (var highlighted in gameObjectsToHighlight)
+            {
+                var outline = FindOutline(highlighted);
+                outline.EnableOutline();
+                yield return new WaitUntil(() => !outline.IsOutLined);
+                MarkComplete();
+            }
+
+            _highlightRoutine = null;
         }
     }
 }

@@ -1,7 +1,11 @@
 {
     "name": "Framework.Sequencing.Unity",
     "rootNamespace": "Framework.Sequencing",
-    "references": ["Framework.Tasks","Framework.Audio"],
+    "references": [
+        "Framework.Sequencing.Core",
+        "Framework.Tasks",
+        "Framework.Audio"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

@@ -1,30 +1,27 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
-using Framework.Tasks;
 using Framework.Audio;
+using Framework.Tasks;
+using UnityEngine;
 
-namespace Framework.Sequential
+namespace Framework.Sequencing
 {
     public class SequentialTask : MonoBehaviour
     {
         [SerializeField]
         private AudioSource _audioSource;
         [SerializeField]
-        private List<Task> _taskList;
-        private Coroutine _currentCoroutine;
-        private Task _currentTask;
+        private List<Task> _taskList = new List<Task>();
+
+        private SequenceRunner _runner;
+        private Coroutine _clock;
         private AudioPlayer _audioPlayer;
-        private bool _hasRun = false;
 
         public List<Task> TaskList => _taskList;
-        public Task CurrentTask => _currentTask;
-        public bool HasRun => _hasRun;
-
-        private void OnEnable()
-        {
-            _audioPlayer = new AudioPlayer(_audioSource);
-        }
+        public SequenceRunner Runner => _runner;
+        public Task CurrentTask => (_runner?.CurrentStep as TaskStep)?.Task;
+        public bool HasRun => _runner != null && _runner.State != SequenceState.Idle;
+        public bool IsRunning => _runner != null && _runner.IsInProgress;
 
         public void AddTask(Task task)
         {
@@ -33,51 +30,109 @@ namespace Framework.Sequential
 
         public void Run()
         {
-            if (_currentCoroutine == null && !_hasRun)
+            if (IsRunning)
             {
-                _hasRun = true;
-                _currentCoroutine = StartCoroutine(RunTasks());
+                return;
             }
+
+            Play(BuildRunnerFromTaskList());
         }
 
-        private IEnumerator RunTasks()
+        public void Play(SequenceRunner runner)
         {
+            Cancel();
+
+            _runner = runner;
+            _runner.Faulted += LogFault;
+            _runner.Start();
+            StartClock();
+        }
+
+        public void Pause() => _runner?.Pause();
+
+        public void Resume() => _runner?.Resume();
+
+        public void SkipCurrentTask() => _runner?.SkipCurrentStep();
+
+        public void GoBack() => _runner?.GoBack();
+
+        public void Restart() => _runner?.Restart();
+
+        public void Cancel()
+        {
+            StopClock();
+
+            if (_runner == null)
+            {
+                return;
+            }
+
+            _runner.Faulted -= LogFault;
+            _runner.Cancel();
+        }
+
+        public void StopExecution() => Cancel();
+
+        private void OnDisable()
+        {
+            Cancel();
+        }
+
+        private SequenceRunner BuildRunnerFromTaskList()
+        {
+            var steps = new List<ISequenceStep>();
+            var audioPlayer = ObtainAudioPlayer();
+
             foreach (var task in _taskList)
             {
-                _currentTask = task;
-                _currentTask.SetAudioPlayer(_audioPlayer);
-                _currentTask.StartTask();
-
-                yield return new WaitUntil(() => _currentTask.IsComplete);
-
-                if (_currentTask is ActionTask actionTask)
+                if (task != null)
                 {
-                    yield return new WaitUntil(() => !actionTask.IsFeedbackAudioPlaying());
+                    steps.Add(new TaskStep(task, audioPlayer));
                 }
-
-                _currentTask.OnCompleteTask?.Invoke();
             }
 
-            StopExecution();
+            return new SequenceRunner(name, steps);
         }
 
-        public void StopExecution()
+        private AudioPlayer ObtainAudioPlayer()
         {
-            if (_currentCoroutine != null)
+            if (_audioPlayer == null && _audioSource != null)
             {
-                StopCoroutine(_currentCoroutine);
-                _currentCoroutine = null;
+                _audioPlayer = new AudioPlayer(_audioSource);
             }
 
-            _taskList.Clear();
-            _currentTask = null;
-            _hasRun = false;
+            return _audioPlayer;
         }
 
-        public void SkipCurrentTask()
+        private void StartClock()
         {
-            _currentTask?.Skip();
-            _currentTask?.TaskComplete();
+            StopClock();
+            _clock = StartCoroutine(TickWhileInProgress(_runner));
+        }
+
+        private void StopClock()
+        {
+            if (_clock != null)
+            {
+                StopCoroutine(_clock);
+                _clock = null;
+            }
+        }
+
+        private IEnumerator TickWhileInProgress(SequenceRunner runner)
+        {
+            while (runner.IsInProgress)
+            {
+                runner.Advance(Time.deltaTime);
+                yield return null;
+            }
+
+            _clock = null;
+        }
+
+        private static void LogFault(System.Exception exception)
+        {
+            Debug.LogException(exception);
         }
     }
 }
