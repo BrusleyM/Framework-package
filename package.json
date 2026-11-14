@@ -5,16 +5,15 @@
     "description": "A reusable sequencing framework for Unity: a pure C# sequence runner, event-driven step conditions and a thin Unity layer for guided flows such as tutorials.",
     "unity": "2022.3",
     "license": "MIT",
-    "keywords": ["sequence", "tutorial", "tasks", "xr", "flow"],
+    "keywords": [
+        "sequence",
+        "tutorial",
+        "tasks",
+        "xr",
+        "flow"
+    ],
     "author": {
         "name": "Brusley Masemola",
         "url": "https://github.com/BrusleyM/Framework-package"
-    },
-    "samples": [
-        {
-            "displayName": "Test Scene",
-            "description": "A guided task sequence driven by the sequencer.",
-            "path": "Samples"
-        }
-    ]
+    }
 }

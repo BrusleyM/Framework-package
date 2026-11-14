@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Framework.Sequencing
 {
@@ -7,9 +8,18 @@ namespace Framework.Sequencing
         private readonly ISequenceStep[] _children;
         private readonly bool[] _childFinished;
         private readonly Action[] _childFinishedHandlers;
+        private int _enteredChildCount;
 
         public ParallelStep(string name, params ISequenceStep[] children) : base(name)
         {
+            foreach (var child in children)
+            {
+                if (child == null)
+                {
+                    throw new ArgumentException("A parallel step cannot contain a null child.", nameof(children));
+                }
+            }
+
             _children = children;
             _childFinished = new bool[children.Length];
             _childFinishedHandlers = new Action[children.Length];
@@ -23,6 +33,7 @@ namespace Framework.Sequencing
         protected override void OnEnter()
         {
             Array.Clear(_childFinished, 0, _childFinished.Length);
+            _enteredChildCount = 0;
 
             for (var index = 0; index < _children.Length; index++)
             {
@@ -31,6 +42,7 @@ namespace Framework.Sequencing
 
             for (var index = 0; index < _children.Length; index++)
             {
+                _enteredChildCount = index + 1;
                 _children[index].Enter();
             }
 
@@ -39,7 +51,7 @@ namespace Framework.Sequencing
 
         protected override void OnAdvance(float deltaSeconds)
         {
-            for (var index = 0; index < _children.Length; index++)
+            for (var index = 0; index < _children.Length && IsWaiting; index++)
             {
                 if (!_childFinished[index])
                 {
@@ -53,7 +65,24 @@ namespace Framework.Sequencing
             for (var index = 0; index < _children.Length; index++)
             {
                 _children[index].Finished -= _childFinishedHandlers[index];
-                _children[index].Exit(_childFinished[index] ? ExitReason.Completed : reason);
+            }
+
+            var failures = new List<Exception>();
+            for (var index = 0; index < _enteredChildCount; index++)
+            {
+                try
+                {
+                    _children[index].Exit(_childFinished[index] ? ExitReason.Completed : reason);
+                }
+                catch (Exception failure)
+                {
+                    failures.Add(failure);
+                }
+            }
+
+            if (failures.Count > 0)
+            {
+                throw failures.Count == 1 ? failures[0] : new AggregateException(failures);
             }
         }
 
@@ -65,6 +94,11 @@ namespace Framework.Sequencing
 
         private void FinishWhenEveryChildFinished()
         {
+            if (_enteredChildCount < _children.Length)
+            {
+                return;
+            }
+
             foreach (var hasFinished in _childFinished)
             {
                 if (!hasFinished)
