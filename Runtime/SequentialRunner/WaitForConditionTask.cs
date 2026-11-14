@@ -17,6 +17,7 @@ namespace Framework.Sequencing
                 throw new System.InvalidOperationException($"{name} needs a condition source that implements IStepCondition.");
             }
 
+            Condition.Satisfied -= TaskComplete;
             Condition.Satisfied += TaskComplete;
             Condition.Arm();
         }
@@ -25,6 +26,12 @@ namespace Framework.Sequencing
         {
             StopWaiting();
             base.TaskComplete();
+        }
+
+        public override void Skip()
+        {
+            StopWaiting();
+            base.Skip();
         }
 
         public override void CancelTask()
