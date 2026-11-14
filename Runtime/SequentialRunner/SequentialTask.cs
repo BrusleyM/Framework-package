@@ -40,6 +40,11 @@ namespace Framework.Sequencing
 
         public void Play(SequenceRunner runner)
         {
+            if (!isActiveAndEnabled)
+            {
+                throw new System.InvalidOperationException($"{name} must be active and enabled to run a sequence.");
+            }
+
             Cancel();
 
             _runner = runner;
