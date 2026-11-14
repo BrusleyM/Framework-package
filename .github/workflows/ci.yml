@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, master]
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  workflow-lint:
+    name: Lint workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: raven-actions/actionlint@v2
+
+  package-checks:
+    name: Package checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test the CI tooling
+        working-directory: .github/scripts
+        run: python -m unittest test_release_tools
+      - name: Check manifest, meta files, assembly references and changelog
+        run: python .github/scripts/check_package.py
+      - name: On a pull request into master, require the changelog section of the release
+        if: github.event_name == 'pull_request' && github.base_ref == 'master'
+        run: python .github/scripts/check_package.py --release
+
+  core-tests:
+    name: Core tests (no Unity)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - run: dotnet test .github/core-tests
+
+  unity-tests:
+    name: Unity ${{ matrix.name }}
+    needs: [package-checks, core-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: 2022.3 (oldest supported)
+            unity: 2022.3.51f1
+            urp: 14.0.11
+            testFramework: 1.4.5
+            interactionToolkit: ""
+          - name: 6000.3
+            unity: 6000.3.9f1
+            urp: 17.3.0
+            testFramework: 1.6.0
+            interactionToolkit: ""
+          - name: 6000.3 with XR Interaction Toolkit
+            unity: 6000.3.9f1
+            urp: 17.3.0
+            testFramework: 1.6.0
+            interactionToolkit: 3.0.8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Create the host project
+        run: >
+          python .github/scripts/create_host_project.py .host
+          --unity "${{ matrix.unity }}"
+          --urp "${{ matrix.urp }}"
+          --test-framework "${{ matrix.testFramework }}"
+          ${{ matrix.interactionToolkit != '' && format('--xr-interaction-toolkit "{0}"', matrix.interactionToolkit) || '' }}
+      - uses: actions/cache@v4
+        with:
+          path: .host/Library
+          key: Library-${{ matrix.unity }}-${{ matrix.interactionToolkit }}-${{ hashFiles('.host/Packages/manifest.json') }}
+          restore-keys: Library-${{ matrix.unity }}-${{ matrix.interactionToolkit }}-
+      - name: Run EditMode and PlayMode tests
+        id: tests
+        continue-on-error: true
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: .host
+          unityVersion: ${{ matrix.unity }}
+          testMode: all
+          artifactsPath: test-results
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: Unity ${{ matrix.name }} test results
+      - name: Fail unless tests ran and none failed
+        run: python .github/scripts/check_test_results.py test-results
+      - name: Keep the test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.unity }}-${{ matrix.interactionToolkit }}
+          path: test-results

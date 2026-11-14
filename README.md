@@ -95,7 +95,26 @@ Add `https://github.com/BrusleyM/Framework-package.git#develop` in Package Manag
 
 ## Tests
 
-`Tests/Editor` holds EditMode tests for the core, the task adapter and the conditions. `Tests/PlayMode` walks the Test scene through skip, pause, back, restart and cancel. Keep the package under `Assets`, or add it to `testables`, to run them.
+`Tests/Editor` holds EditMode tests for the core, the task adapter and the conditions. `Tests/PlayMode` runs `SequentialTask` in play mode with tasks built in code. Keep the package under `Assets`, or add it to `testables`, to run them.
+
+## Continuous integration and releases
+
+Everything runs in this repository's own GitHub Actions and depends on no consuming project.
+
+| Workflow | When | What |
+|---|---|---|
+| `ci.yml` | pull requests into `develop` or `master`, pushes to `develop`, by hand | lints the workflows, checks the manifest, `.meta` files, assembly references and changelog, runs the core tests without Unity, then runs the EditMode and play mode tests in a generated host project on Unity 2022.3, Unity 6000.3, and 6000.3 with XR Interaction Toolkit |
+| `release-prepare.yml` | by hand on `develop` | bumps `package.json`, moves the changelog's Unreleased section under the new version, and opens a pull request into `master` |
+| `release-publish.yml` | push to `master` | tags `vX.Y.Z`, creates the GitHub release from the changelog section, and opens a pull request bringing the release back into `develop` |
+
+The version lives only in `package.json`. Choose the bump when you run `release-prepare`: `current` releases the version already written, `stable` drops a `-preview.N` label, `patch`, `minor` and `major` bump that number and reset the lower ones, and `preview` continues `-preview.N`. Pre-releases are published as GitHub pre-releases.
+
+Set up once:
+- Secrets `UNITY_LICENSE`, `UNITY_EMAIL` and `UNITY_PASSWORD` for the Unity test jobs, as described in the game-ci activation guide.
+- Repository setting Actions > General > Allow GitHub Actions to create and approve pull requests.
+- Branch protection on `develop` and `master` requiring the CI jobs, so a release cannot merge with failing tests.
+
+To run the checks locally: `python .github/scripts/check_package.py`, `python -m unittest test_release_tools` from `.github/scripts`, and `dotnet test .github/core-tests`.
 
 ## Known limitations
 

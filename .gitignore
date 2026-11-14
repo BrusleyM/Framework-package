@@ -70,3 +70,8 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 Assets/Local/WorkShop/Workshop/Workshop.unitypackage.meta
+
+.github/core-tests/bin/
+.github/core-tests/obj/
+.github/scripts/__pycache__/
+.host/
