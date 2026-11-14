@@ -1,0 +1,25 @@
+{
+    "name": "Framework.Sequencing.Xr",
+    "rootNamespace": "Framework.Sequencing.Xr",
+    "references": [
+        "Framework.Sequencing.Core",
+        "Unity.XR.Interaction.Toolkit"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "FRAMEWORK_XR_INTERACTION_TOOLKIT"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.xr.interaction.toolkit",
+            "expression": "3.0.0",
+            "define": "FRAMEWORK_XR_INTERACTION_TOOLKIT"
+        }
+    ],
+    "noEngineReferences": false
+}
