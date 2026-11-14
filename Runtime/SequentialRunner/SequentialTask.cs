@@ -70,8 +70,8 @@ namespace Framework.Sequencing
 
             _runner.Faulted -= LogFault;
             _runner.Faulted += LogFault;
-            EnsureClockIsRunning();
             _runner.Restart();
+            EnsureClockIsRunning();
         }
 
         public void Cancel()
