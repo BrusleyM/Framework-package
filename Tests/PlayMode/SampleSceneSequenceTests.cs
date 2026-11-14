@@ -1,8 +1,10 @@
 using System.Collections;
 using System.Linq;
 using NUnit.Framework;
+#if UNITY_EDITOR
 using UnityEditor;
 using UnityEditor.SceneManagement;
+#endif
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
@@ -16,6 +18,7 @@ namespace Framework.Sequencing.Tests
         [UnitySetUp]
         public IEnumerator LoadSampleScene()
         {
+#if UNITY_EDITOR
             var sceneGuid = AssetDatabase.FindAssets("Test scene t:Scene").FirstOrDefault();
             Assert.IsNotNull(sceneGuid, "The Test scene sample is not imported in this project.");
 
@@ -24,6 +27,10 @@ namespace Framework.Sequencing.Tests
                 scenePath,
                 new LoadSceneParameters(LoadSceneMode.Single));
             yield return null;
+#else
+            Assert.Ignore("Sample scene tests run in the editor only.");
+            yield break;
+#endif
 
             _sequence = Object.FindFirstObjectByType<SequentialTask>();
             Assert.IsNotNull(_sequence, "The sample scene has no SequentialTask.");
@@ -34,10 +41,9 @@ namespace Framework.Sequencing.Tests
         public IEnumerator Skipping_every_task_walks_the_whole_sample_sequence_to_completion()
         {
             var taskCount = _sequence.TaskList.Count;
-            var enteredTasks = 0;
+            Assert.Greater(taskCount, 0);
 
             _sequence.Run();
-            _sequence.Runner.StepEntered += (step, index) => enteredTasks++;
             yield return null;
 
             for (var attempt = 0; attempt < taskCount * 2 && _sequence.IsRunning; attempt++)
@@ -47,7 +53,6 @@ namespace Framework.Sequencing.Tests
             }
 
             Assert.AreEqual(SequenceState.Completed, _sequence.Runner.State);
-            Assert.GreaterOrEqual(taskCount, 1);
         }
 
         [UnityTest]
