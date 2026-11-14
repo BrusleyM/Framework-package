@@ -29,6 +29,7 @@ namespace Framework.Tasks
         {
             StopEverythingInProgress();
             LinkCheckPointsToThisTask();
+            _checkPoints.ResetAllPoints();
             ListenForAllCheckPointsChecked();
             PlayInstructionalAudio();
             StartReminder();
@@ -54,10 +55,10 @@ namespace Framework.Tasks
                 return;
             }
 
+            IsSkip = true;
             StopEverythingInProgress();
             _audioPlayer?.Stop();
             TearDownSubTasks();
-            PlayFeedbackAudio();
             MarkComplete();
         }
 
@@ -66,6 +67,7 @@ namespace Framework.Tasks
             StopEverythingInProgress();
             _audioPlayer?.Stop();
             TearDownSubTasks();
+            _checkPoints.ResetAllPoints();
             IsDoing = false;
         }
 
