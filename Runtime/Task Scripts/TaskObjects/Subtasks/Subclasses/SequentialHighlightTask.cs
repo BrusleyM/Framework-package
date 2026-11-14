@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace Framework.Tasks
 {
     public class SequentialHighlightTask : HighlightTask
@@ -20,16 +22,22 @@ namespace Framework.Tasks
         private void HighlightNext()
         {
             StopWatchingCurrentOutline();
-            _highlightIndex++;
 
-            if (_highlightIndex >= gameObjectsToHighlight.Length)
+            while (++_highlightIndex < gameObjectsToHighlight.Length)
             {
+                var isFirst = _highlightIndex == 0;
+                var outline = isFirst ? FindOutline(gameObjectsToHighlight[0]) : FindOutlineIfStillAlive(gameObjectsToHighlight[_highlightIndex]);
+
+                if (outline == null)
+                {
+                    continue;
+                }
+
+                _currentOutline = outline;
+                _currentOutline.Disabled += OnCurrentOutlineDisabled;
+                _currentOutline.EnableOutline();
                 return;
             }
-
-            _currentOutline = FindOutline(gameObjectsToHighlight[_highlightIndex]);
-            _currentOutline.Disabled += OnCurrentOutlineDisabled;
-            _currentOutline.EnableOutline();
         }
 
         private void OnCurrentOutlineDisabled()
@@ -45,6 +53,11 @@ namespace Framework.Tasks
                 _currentOutline.Disabled -= OnCurrentOutlineDisabled;
                 _currentOutline = null;
             }
+        }
+
+        private static Outline FindOutlineIfStillAlive(GameObject highlighted)
+        {
+            return highlighted != null ? highlighted.GetComponent<Outline>() : null;
         }
     }
 }
