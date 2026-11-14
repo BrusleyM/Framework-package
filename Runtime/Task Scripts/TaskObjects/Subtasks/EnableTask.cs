@@ -11,6 +11,7 @@ namespace Framework.Tasks
         public override void Execute()
         {
             EnableGameObject();
+            MarkComplete();
         }
 
         public void DisableGameObject()
