@@ -1,6 +1,6 @@
 {
     "name": "Framework.Tools",
-    "rootNamespace": "Framework.Tools",
+    "rootNamespace": "Framework",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

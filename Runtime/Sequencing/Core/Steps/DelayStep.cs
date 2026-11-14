@@ -13,7 +13,7 @@ namespace Framework.Sequencing
         protected override void OnEnter()
         {
             _elapsedSeconds = 0f;
-            if (_durationSeconds <= 0f)
+            if (!(_durationSeconds > 0f))
             {
                 Finish();
             }

@@ -13,6 +13,7 @@ namespace Framework.Tasks
         {
             gameObjectToEnable.SetActive(true);
             highlightTask.Prepare();
+            highlightTask.Completed -= MarkComplete;
             highlightTask.Completed += MarkComplete;
             highlightTask.Execute();
         }

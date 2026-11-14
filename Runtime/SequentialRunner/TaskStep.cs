@@ -37,6 +37,11 @@ namespace Framework.Sequencing
         {
             Task.Completed -= OnTaskCompleted;
 
+            if (Task == null)
+            {
+                return;
+            }
+
             switch (reason)
             {
                 case ExitReason.Completed:
