@@ -55,29 +55,69 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
-        public void A_sub_task_listed_after_the_enable_task_still_runs()
+        public void Sub_tasks_listed_after_the_enable_task_run_in_the_order_they_are_listed()
         {
-            var action = _host.AddComponent<ActionTask>();
-            var laterSubTask = _host.AddComponent<ProbeSubTask>();
-            var serialized = new SerializedObject(action);
-            var subTasks = serialized.FindProperty("_subTasks");
-            subTasks.arraySize = 2;
-            subTasks.GetArrayElementAtIndex(0).objectReferenceValue = _enableTask;
-            subTasks.GetArrayElementAtIndex(1).objectReferenceValue = laterSubTask;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
+            var journal = new System.Collections.Generic.List<string>();
+            var action = ActionTaskRunning(_enableTask, ProbeSubTask("first", journal), ProbeSubTask("second", journal));
 
             action.StartTask();
 
             Assert.IsTrue(_target.activeSelf);
-            Assert.AreEqual(1, laterSubTask.ExecuteCount);
+            Assert.AreEqual(new[] { "first", "second" }, journal);
         }
 
         [Test]
-        public void An_enable_task_without_a_game_object_refuses_to_execute()
+        public void An_enable_task_without_a_game_object_refuses_to_execute_and_stays_incomplete()
         {
             Assign(_enableTask, "gameObjectToEnable", null);
 
             Assert.Throws<System.InvalidOperationException>(() => _enableTask.Execute());
+            Assert.IsFalse(_enableTask.IsComplete);
+        }
+
+        [Test]
+        public void Cancelling_the_action_task_after_the_enable_task_completed_disables_the_game_object_again()
+        {
+            var action = ActionTaskRunning(_enableTask);
+            action.StartTask();
+            Assert.IsTrue(_target.activeSelf);
+
+            action.CancelTask();
+
+            Assert.IsFalse(_target.activeSelf);
+        }
+
+        [Test]
+        public void Skipping_the_action_task_after_the_enable_task_completed_disables_the_game_object_again()
+        {
+            var action = ActionTaskRunning(_enableTask);
+            action.StartTask();
+
+            action.Skip();
+
+            Assert.IsFalse(_target.activeSelf);
+        }
+
+        private ActionTask ActionTaskRunning(params GameObjectTask[] subTasks)
+        {
+            var action = _host.AddComponent<ActionTask>();
+            var serialized = new SerializedObject(action);
+            var property = serialized.FindProperty("_subTasks");
+            property.arraySize = subTasks.Length;
+            for (var index = 0; index < subTasks.Length; index++)
+            {
+                property.GetArrayElementAtIndex(index).objectReferenceValue = subTasks[index];
+            }
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return action;
+        }
+
+        private GameObjectTask ProbeSubTask(string label, System.Collections.Generic.List<string> journal)
+        {
+            var probe = _host.AddComponent<RecordingSubTask>();
+            probe.Label = label;
+            probe.Journal = journal;
+            return probe;
         }
 
         private static void Assign(Object owner, string field, Object value)
@@ -87,13 +127,14 @@ namespace Framework.Sequencing.Tests
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private sealed class ProbeSubTask : GameObjectTask
+        private sealed class RecordingSubTask : GameObjectTask
         {
-            public int ExecuteCount { get; private set; }
+            public string Label { get; set; }
+            public System.Collections.Generic.List<string> Journal { get; set; }
 
             public override void Execute()
             {
-                ExecuteCount++;
+                Journal.Add(Label);
                 MarkComplete();
             }
         }
