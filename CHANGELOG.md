@@ -16,6 +16,7 @@ Assembly references by name must be updated; references by GUID keep working exc
 
 ### Fixed
 - The package now declares the built-in modules it uses (animation, audio, physics); a project without them failed to compile.
+- Restarting a sequence that had already finished started it without a clock, so timed steps never advanced.
 - `EnableTask` now completes as soon as it has enabled its GameObject, so sub tasks listed after it start.
 
 ### Changed

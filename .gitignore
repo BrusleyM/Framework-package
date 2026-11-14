@@ -75,3 +75,4 @@ Assets/Local/WorkShop/Workshop/Workshop.unitypackage.meta
 .github/core-tests/obj/
 .github/scripts/__pycache__/
 .host/
+!.github/core-tests/core-tests.csproj
