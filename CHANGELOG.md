@@ -31,6 +31,7 @@ The README previously described `TaskManager` and `BaseTask`; those types never 
 ### Added
 - MIT license.
 - `Framework.Sequencing.Core`: pure C# `SequenceRunner` with start, pause, resume, skip, back, restart and cancel, plus instant, delay, wait-for-condition, parallel and reminding steps and a fluent `Sequence` builder.
-- `SequentialTask` now runs on the runner and exposes pause, resume, back, restart and cancel.
+- `SequentialTask` now runs on the runner and exposes pause, resume, back, restart and cancel. `Run()` can start a finished sequence again and no longer clears the task list.
+- Skipping an `ActionTask` no longer plays its feedback audio.
 - Event-driven conditions: `SignalCondition`, `ColliderContactCondition`, `InteractableCondition`.
 - EditMode and PlayMode tests.
