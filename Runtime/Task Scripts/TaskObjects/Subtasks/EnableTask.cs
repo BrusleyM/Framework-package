@@ -8,34 +8,30 @@ namespace Framework.Tasks
         [SerializeField]
         private GameObject gameObjectToEnable;
 
-        protected void EnableGameObject()
+        public override void Execute()
         {
-            if (gameObjectToEnable != null)
-            {
-                gameObjectToEnable.SetActive(true);
-            }
-            else
-            {
-                throw new InvalidOperationException("No GameObject assigned to EnableTask.");
-            }
+            EnableGameObject();
+            MarkComplete();
         }
+
         public void DisableGameObject()
         {
             if (gameObjectToEnable != null)
             {
                 gameObjectToEnable.SetActive(false);
             }
-            else
+
+            MarkComplete();
+        }
+
+        protected void EnableGameObject()
+        {
+            if (gameObjectToEnable == null)
             {
                 throw new InvalidOperationException("No GameObject assigned to EnableTask.");
             }
-            IsComplete = true;
-        }
-        
-        public override void Execute()
-        {
-            EnableGameObject();
-        }
 
+            gameObjectToEnable.SetActive(true);
+        }
     }
 }

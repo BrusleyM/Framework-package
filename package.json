@@ -15,5 +15,8 @@
     "author": {
         "name": "Brusley Masemola",
         "url": "https://github.com/BrusleyM/Framework-package"
+    },
+    "dependencies": {
+        "com.unity.render-pipelines.universal": "14.0.8"
     }
 }

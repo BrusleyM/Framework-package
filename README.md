@@ -1,104 +1,107 @@
-*Framework Vishnu*
+# Framework Sequencer
 
-A powerful Unity framework for creating and managing sequential and non-sequential tasks, designed to simplify task workflows and enhance modularity in Unity projects.
+A reusable sequencing framework for Unity. Tell a guided flow, such as a tutorial, as an ordered list of steps. Steps finish through events, and the whole sequence can be skipped, rewound, paused, restarted or cancelled with clean-up guaranteed.
 
-Features:
-•🚀 Task Management: Effortlessly create and manage sequential or non-sequential tasks.
-•📦 Lightweight & Modular: Designed for flexibility and easy integration into any Unity project.
-•🎯 Sample Scene Included: Demonstrates how to use the framework with a functional example.
-•💻 Editor Integration: Simplifies task setup and management with user-friendly interfaces.
+## Layers
 
-Installation
+| Assembly | Depends on | Purpose |
+|---|---|---|
+| `Framework.Sequencing.Core` | nothing, no engine references | `SequenceRunner`, steps, builder. Time is supplied by the caller. |
+| `Framework.Sequencing.Unity` | Core, Tasks, Audio | `SequentialTask` runner component, `TaskStep`, signal and collider conditions, `WaitForConditionTask` |
+| `Framework.Sequencing.Xr` | Core, XR Interaction Toolkit 3.x | `InteractableCondition`. Compiles only when XRI 3.x is installed (version define `FRAMEWORK_XR_INTERACTION_TOOLKIT`). |
+| `Framework.Tasks` | Audio, CheckPoints, Outline | Scene-authored `Task` components |
+| `Framework.Outline`, `Framework.Audio`, `Framework.CheckPoints`, `Framework.Tools` | | Supporting tools. `Outline` and `Tools` reach `Framework.Sequencing.Unity` only through `Framework.Tasks`. |
 
-Option 1: Add via Git URL
+Requires Unity 2022.3 or newer and the Universal Render Pipeline.
 
-(I)	Open your Unity project.
-(II)	Navigate to Window > Package Manager.
-(III)	Click the + button and select Add package from git URL….
-(IV)	Paste the following URL:
+## Tell a sequence in code
 
-	https://github.com/BrusleyM/Framework-package.git
+```csharp
+var tutorial = Sequence.Named("Controllers tutorial")
+    .Do("Show welcome hint", ShowWelcomeHint)
+    .Wait(2f)
+    .WaitFor("Grab the paddle", paddleGrabbed)
+    .Together("Both hands ready",
+        new WaitForConditionStep("Left hand", leftHandReady),
+        new WaitForConditionStep("Right hand", rightHandReady))
+    .Then(new RemindingStep(new WaitForConditionStep("Hit the ball", ballHit), 8f, PlayReminder))
+    .Do("Celebrate", PlayCelebration)
+    .Build();
 
-
-
-Option 2: Manual Installation
-
-•Clone the repository:
-	
- 	git clone https://github.com/BrusleyM/Framework-package.git
-•Copy the package folder into your Unity project’s Packages directory.
-
-Getting Started
-
-Import the Sample Scene
-
-• Open Window > Package Manager.
-• Select Framework Vishnu from the list of packages.
-• Under Samples, click Import next to the “Test Scene” sample.
-
-The sample will be added to your project at:
-
-Assets/Samples/Framework Vishnu/<version>/Scenes/Test scene.unity
-
-Quick Start Guide
-
-1. Set up a Task Manager:
-   • Create a new GameObject and attach the TaskManager script.
-2. Define Tasks:
-   • Create new task scripts inheriting from BaseTask.
-   • Implement task-specific logic by overriding relevant methods (StartTask, CompleteTask, etc.).
-3. Add Tasks to Task Manager:
-   • Populate the TaskManager with your custom tasks in the Unity Inspector.
-
-Example
-
-Here’s an example of a simple custom task:
-
+sequentialTask.Play(tutorial);
 ```
-using Framework.Tasks;
-public class ExampleTask : BaseTask
+
+`Then(ISequenceStep)` adds any step, including your own. The built-in steps are `InstantStep`, `DelayStep`, `WaitForConditionStep`, `ParallelStep` and `RemindingStep`.
+
+`SequenceRunner` is plain C#. Drive it yourself with `Advance(deltaSeconds)` in tests or in any engine loop.
+
+```csharp
+tutorial.Start();
+tutorial.Advance(0.016f);
+tutorial.SkipCurrentStep();
+tutorial.GoBack();
+tutorial.Pause();
+tutorial.Resume();
+tutorial.Restart();
+tutorial.Cancel();
+```
+
+Events: `StepEntered`, `StepExited`, `StateChanged`, `Completed`, `Cancelled`, `Faulted`. `State` is one of `Idle`, `Running`, `Paused`, `Completed`, `Cancelled`, `Faulted`.
+
+Behaviour worth knowing:
+- Commands issued from event handlers or step callbacks are queued and run after the current transition.
+- A step that throws faults the sequence. The step is exited as `Cancelled` and `Faulted` carries the exception. `SequentialTask` logs it.
+- `GoBack` on the first step re-enters the first step.
+- `Skip` and `GoBack` while paused move to the other step but stay paused.
+- `Restart` works from any state and resumes a paused sequence.
+- An exception thrown by an event handler is rethrown to the caller once the sequence is consistent.
+
+## Steps that wait for the player
+
+A condition implements `IStepCondition`: it is armed when the step starts and disarmed when the step ends, whatever the reason. A condition may be satisfied synchronously while arming.
+
+- `SignalCondition`: call `Raise()` from any `UnityEvent`. Hand pose events and button events plug in here. Signals raised while it is not armed are ignored, not remembered.
+- `ColliderContactCondition`: satisfied when a collider on an accepted layer touches this one, including contact that already exists. It accepts no layers until you choose them.
+- `InteractableCondition` (XRI 3.x): satisfied on hover or select, or on activate, of an interactable. It also completes at once if the interactable is already hovered or selected. Whether activate fires depends on your interaction profile, so select is the reliable choice for pokes and grabs.
+
+## Scene authoring
+
+Add a `SequentialTask` to a GameObject, assign an `AudioSource` and list `Task` components. `ActionTask` combines narration, reminders, sub tasks and check points. `WaitForConditionTask` waits for any condition component.
+
+`Run()` does nothing while a sequence is in progress, and starts over once it has ended. `Play(runner)` cancels the current runner first. `Pause`, `Resume`, `SkipCurrentTask`, `GoBack`, `Restart` and `Cancel` act on the running sequence. The component must be active and enabled to run.
+
+The Test scene lives at `Samples/Scenes/Test scene.unity`. The `Samples` folder is imported and compiled with the package; it is not offered as a Package Manager sample.
+
+## Write your own step
+
+```csharp
+public sealed class ShowHintStep : StepBase
 {
-    public override void StartTask()
-    {
-        Debug.Log("Task started!");
-        CompleteTask();
-    }
-    public override void CompleteTask()
-    {
-        Debug.Log("Task completed!");
-        base.CompleteTask();
-    }
+    private readonly GameObject _hint;
+
+    public ShowHintStep(GameObject hint) : base("Show hint") { _hint = hint; }
+
+    protected override void OnEnter() => _hint.SetActive(true);
+
+    protected override void OnExit(ExitReason reason) => _hint.SetActive(false);
 }
 ```
 
-Documentation
+Call `Finish()` from any event handler to complete the step. `OnExit` runs on every exit path (completed, skipped, rewound, restarted, cancelled), so clean up there.
 
-Core Components
+## Installation
 
-• BaseTask: The foundation for all tasks. Extend this class to create custom tasks.
-• TaskManager: Manages the execution and flow of tasks.
-• Utilities: Includes helper functions for common task-related operations.
+Add `https://github.com/BrusleyM/Framework-package.git#develop` in Package Manager once the 2.0 work is merged to `develop`. Before that, use the name of the branch you want after `#`, and a `#2.0.0-preview.1` tag once it is released.
 
-Samples
+## Tests
 
-The package includes a sample scene to demonstrate:
-• Task setup and execution.
-• Sequential and non-sequential task flows.
+`Tests/Editor` holds EditMode tests for the core, the task adapter and the conditions. `Tests/PlayMode` walks the Test scene through skip, pause, back, restart and cancel. Keep the package under `Assets`, or add it to `testables`, to run them.
 
-Contributing
+## Known limitations
 
-We welcome contributions to improve this framework! To contribute:
-1. Fork the repository.
-2. Create a new branch for your feature or fix.
-3. Submit a pull request with a detailed description.
-
-Known Issues
-
-• None at the moment. Please report issues via GitHub Issues.
-
-Contact
-
-For questions, feedback, or support:
-	•	Author: Brusley Masemola
-	•	Email: brusleymasemola@hotmail.com
-	•	GitHub: BrusleyM
+- Only `InteractableCondition` is provided for XR. Wire Meta hand pose events to a `SignalCondition` for gestures.
+- The outline shaders are URP only and rely on a stencil capable depth buffer. They have not been checked on a Quest.
+- `OutlineWidth` is a view-space thickness, so the visible width varies with field of view.
+- `ColliderContactCondition` is one shot and will miss a ball resting asleep on the collider when armed.
+- A task that is still settling, for example `ActionTask` playing feedback audio, is checked on each runner tick until it settles.
+- A step instance holds its own state. Build a new sequence for each run instead of reusing step instances across runners.

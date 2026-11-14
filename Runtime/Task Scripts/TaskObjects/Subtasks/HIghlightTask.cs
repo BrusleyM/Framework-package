@@ -1,5 +1,4 @@
 using System;
-using Framework.CheckPoints;
 using UnityEngine;
 
 namespace Framework.Tasks
@@ -9,57 +8,67 @@ namespace Framework.Tasks
         [SerializeField]
         protected GameObject[] gameObjectsToHighlight;
 
-        protected virtual void InitializeOutline()
+        public override void Execute()
         {
-            if (gameObjectsToHighlight == null || gameObjectsToHighlight.Length == 0)
+            EnableOutline();
+        }
+
+        public virtual void DisableAllOutline()
+        {
+            foreach (var highlighted in gameObjectsToHighlight)
             {
-                throw new InvalidOperationException("No GameObjects provided for highlighting.");
+                DisableOutline(highlighted);
+            }
+
+            MarkComplete();
+        }
+
+        public virtual void DisableOutline(GameObject highlighted)
+        {
+            if (highlighted == null)
+            {
+                return;
+            }
+
+            var outline = highlighted.GetComponent<Outline>();
+            if (outline != null)
+            {
+                outline.DisableOutline();
+            }
+        }
+
+        public override void Cancel()
+        {
+            foreach (var highlighted in gameObjectsToHighlight)
+            {
+                DisableOutline(highlighted);
             }
         }
 
         protected virtual void EnableOutline()
         {
-            foreach (GameObject go in gameObjectsToHighlight)
+            if (gameObjectsToHighlight == null || gameObjectsToHighlight.Length == 0)
             {
-                var outline = go.GetComponent<Outline>();
-
-                if (outline != null)
-                {
-                    outline.EnableOutline();
-                }
-                else
-                {
-                    throw new InvalidOperationException("Outline component not found on GameObject.");
-                }
+                throw new InvalidOperationException("No GameObjects provided for highlighting.");
             }
-            IsComplete = true;
+
+            foreach (var highlighted in gameObjectsToHighlight)
+            {
+                FindOutline(highlighted).EnableOutline();
+            }
+
+            MarkComplete();
         }
 
-        public virtual void DisableAllOutline()
+        protected static Outline FindOutline(GameObject highlighted)
         {
-            foreach (var gameObject in gameObjectsToHighlight)
-            {
-                DisableOutline(gameObject);
-            }
-            IsComplete = true;
-        }
-
-        public virtual void DisableOutline(GameObject gameObject)
-        {
-            var outline = gameObject.GetComponent<Outline>();
-            if (outline != null)
-            {
-                outline.DisableOutline();
-            }
-            else
+            var outline = highlighted != null ? highlighted.GetComponent<Outline>() : null;
+            if (outline == null)
             {
                 throw new InvalidOperationException("Outline component not found on GameObject.");
             }
-        }
 
-        public override void Execute()
-        {
-            EnableOutline();
+            return outline;
         }
     }
 }
