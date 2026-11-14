@@ -15,6 +15,7 @@ Assembly references by name must be updated; references by GUID keep working exc
 `GameObjectExtension.SetLayerRecursively` and `RevertLayerRecursively` were removed.
 
 ### Fixed
+- Restarting a sequence that had already finished started it without a clock, so timed steps never advanced.
 - `EnableTask` now completes as soon as it has enabled its GameObject, so sub tasks listed after it start.
 
 ### Changed

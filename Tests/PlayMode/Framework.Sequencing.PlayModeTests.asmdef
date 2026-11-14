@@ -5,6 +5,7 @@
         "Framework.Sequencing.Core",
         "Framework.Sequencing.Unity",
         "Framework.Tasks",
+        "Framework.Audio",
         "UnityEngine.TestRunner"
     ],
     "includePlatforms": [],
