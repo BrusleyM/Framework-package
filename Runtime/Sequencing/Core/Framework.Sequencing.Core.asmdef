@@ -1,0 +1,14 @@
+{
+    "name": "Framework.Sequencing.Core",
+    "rootNamespace": "Framework.Sequencing",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}
