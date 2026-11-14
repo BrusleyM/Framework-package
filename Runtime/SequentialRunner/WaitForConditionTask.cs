@@ -19,7 +19,16 @@ namespace Framework.Sequencing
 
             Condition.Satisfied -= TaskComplete;
             Condition.Satisfied += TaskComplete;
-            Condition.Arm();
+
+            try
+            {
+                Condition.Arm();
+            }
+            catch
+            {
+                Condition.Satisfied -= TaskComplete;
+                throw;
+            }
         }
 
         public override void TaskComplete()
