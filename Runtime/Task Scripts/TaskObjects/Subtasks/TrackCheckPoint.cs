@@ -10,7 +10,7 @@ namespace Framework.Tasks
         public override void Execute()
         {
             StopTracking();
-            _taskPoints.CheckPointsParent.OnAllChecked.AddListener(MarkComplete);
+            _taskPoints.CheckPointsParent.OnAllChecked.AddListener(CompleteAndStopTracking);
         }
 
         public override void Cancel()
@@ -18,9 +18,15 @@ namespace Framework.Tasks
             StopTracking();
         }
 
+        private void CompleteAndStopTracking()
+        {
+            StopTracking();
+            MarkComplete();
+        }
+
         private void StopTracking()
         {
-            _taskPoints.CheckPointsParent.OnAllChecked.RemoveListener(MarkComplete);
+            _taskPoints.CheckPointsParent.OnAllChecked.RemoveListener(CompleteAndStopTracking);
         }
     }
 }

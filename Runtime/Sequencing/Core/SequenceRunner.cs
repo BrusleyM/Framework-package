@@ -6,15 +6,24 @@ namespace Framework.Sequencing
     public sealed class SequenceRunner
     {
         private readonly ISequenceStep[] _steps;
+        private readonly Queue<Action> _queuedCommands = new Queue<Action>();
+        private readonly List<Exception> _handlerFailures = new List<Exception>();
         private ISequenceStep _activeStep;
-        private bool _isEnteringStep;
-        private bool _activeStepFinishedWhileEntering;
+        private bool _isTransitioning;
         private bool _activeStepFinishedWhilePaused;
 
         public SequenceRunner(string name, IEnumerable<ISequenceStep> steps)
         {
             Name = name;
             _steps = new List<ISequenceStep>(steps).ToArray();
+
+            foreach (var step in _steps)
+            {
+                if (step == null)
+                {
+                    throw new ArgumentException("A sequence cannot contain a null step.", nameof(steps));
+                }
+            }
         }
 
         public string Name { get; }
@@ -33,29 +42,33 @@ namespace Framework.Sequencing
 
         public void Start()
         {
-            if (State != SequenceState.Idle)
+            Execute(() =>
             {
-                return;
-            }
-
-            BeginFromFirstStep();
+                if (State == SequenceState.Idle)
+                {
+                    BeginFromFirstStep();
+                }
+            });
         }
 
         public void Restart()
         {
-            LeaveActiveStep(ExitReason.Restarted);
-            BeginFromFirstStep();
+            Execute(() =>
+            {
+                LeaveActiveStep(ExitReason.Restarted);
+                BeginFromFirstStep();
+            });
         }
 
         public void Advance(float deltaSeconds)
         {
-            if (State != SequenceState.Running || _activeStep == null)
+            if (_isTransitioning || State != SequenceState.Running || _activeStep == null)
             {
                 return;
             }
 
             var step = _activeStep;
-            Guard(() => step.Advance(deltaSeconds));
+            Execute(() => Guard(() => step.Advance(deltaSeconds)));
         }
 
         public void Pause()
@@ -68,50 +81,96 @@ namespace Framework.Sequencing
 
         public void Resume()
         {
-            if (State != SequenceState.Paused)
+            Execute(() =>
             {
-                return;
-            }
+                if (State != SequenceState.Paused)
+                {
+                    return;
+                }
 
-            ChangeState(SequenceState.Running);
+                ChangeState(SequenceState.Running);
 
-            if (_activeStepFinishedWhilePaused)
-            {
-                _activeStepFinishedWhilePaused = false;
-                MoveToNextStep(ExitReason.Completed);
-            }
+                if (_activeStepFinishedWhilePaused)
+                {
+                    _activeStepFinishedWhilePaused = false;
+                    MoveToNextStep(ExitReason.Completed);
+                }
+            });
         }
 
         public void SkipCurrentStep()
         {
-            if (IsInProgress && _activeStep != null)
+            Execute(() =>
             {
-                MoveToNextStep(ExitReason.Skipped);
-            }
+                if (IsInProgress && _activeStep != null)
+                {
+                    MoveToNextStep(ExitReason.Skipped);
+                }
+            });
         }
 
         public void GoBack()
         {
-            if (!IsInProgress || _activeStep == null)
+            Execute(() =>
             {
-                return;
-            }
+                if (!IsInProgress || _activeStep == null)
+                {
+                    return;
+                }
 
-            var previousIndex = Math.Max(0, CurrentIndex - 1);
-            LeaveActiveStep(ExitReason.Rewound);
-            EnterStep(previousIndex);
+                var previousIndex = Math.Max(0, CurrentIndex - 1);
+                LeaveActiveStep(ExitReason.Rewound);
+
+                if (State != SequenceState.Faulted)
+                {
+                    EnterStep(previousIndex);
+                }
+            });
         }
 
         public void Cancel()
         {
-            if (!IsInProgress)
+            Execute(() =>
             {
+                if (!IsInProgress)
+                {
+                    return;
+                }
+
+                LeaveActiveStep(ExitReason.Cancelled);
+
+                if (State != SequenceState.Faulted)
+                {
+                    ChangeState(SequenceState.Cancelled);
+                    Notify(() => Cancelled?.Invoke());
+                }
+            });
+        }
+
+        private void Execute(Action command)
+        {
+            if (_isTransitioning)
+            {
+                _queuedCommands.Enqueue(command);
                 return;
             }
 
-            LeaveActiveStep(ExitReason.Cancelled);
-            ChangeState(SequenceState.Cancelled);
-            Cancelled?.Invoke();
+            _isTransitioning = true;
+            try
+            {
+                command();
+                while (_queuedCommands.Count > 0)
+                {
+                    _queuedCommands.Dequeue()();
+                }
+            }
+            finally
+            {
+                _isTransitioning = false;
+                _queuedCommands.Clear();
+            }
+
+            RethrowHandlerFailures();
         }
 
         private void BeginFromFirstStep()
@@ -132,45 +191,37 @@ namespace Framework.Sequencing
             var step = _steps[index];
             CurrentIndex = index;
             _activeStep = step;
-            _activeStepFinishedWhileEntering = false;
             _activeStepFinishedWhilePaused = false;
             step.Finished += OnActiveStepFinished;
 
-            StepEntered?.Invoke(step, index);
-
-            _isEnteringStep = true;
+            Notify(() => StepEntered?.Invoke(step, index));
             Guard(step.Enter);
-            _isEnteringStep = false;
-
-            if (State == SequenceState.Faulted || _activeStep != step)
-            {
-                return;
-            }
-
-            if (_activeStepFinishedWhileEntering)
-            {
-                OnActiveStepFinished();
-            }
         }
 
         private void OnActiveStepFinished()
         {
-            if (_isEnteringStep)
+            var finishedStep = _activeStep;
+            if (finishedStep == null)
             {
-                _activeStepFinishedWhileEntering = true;
                 return;
             }
 
-            if (State == SequenceState.Paused)
+            Execute(() =>
             {
-                _activeStepFinishedWhilePaused = true;
-                return;
-            }
+                if (_activeStep != finishedStep)
+                {
+                    return;
+                }
 
-            if (State == SequenceState.Running)
-            {
-                MoveToNextStep(ExitReason.Completed);
-            }
+                if (State == SequenceState.Paused)
+                {
+                    _activeStepFinishedWhilePaused = true;
+                }
+                else if (State == SequenceState.Running)
+                {
+                    MoveToNextStep(ExitReason.Completed);
+                }
+            });
         }
 
         private void MoveToNextStep(ExitReason reason)
@@ -200,16 +251,17 @@ namespace Framework.Sequencing
                 return;
             }
 
+            var index = CurrentIndex;
             _activeStep = null;
             step.Finished -= OnActiveStepFinished;
             Guard(() => step.Exit(reason));
-            StepExited?.Invoke(step, CurrentIndex, reason);
+            Notify(() => StepExited?.Invoke(step, index, reason));
         }
 
         private void FinishSequence()
         {
             ChangeState(SequenceState.Completed);
-            Completed?.Invoke();
+            Notify(() => Completed?.Invoke());
         }
 
         private void ChangeState(SequenceState state)
@@ -220,7 +272,7 @@ namespace Framework.Sequencing
             }
 
             State = state;
-            StateChanged?.Invoke(state);
+            Notify(() => StateChanged?.Invoke(state));
         }
 
         private void Guard(Action action)
@@ -242,7 +294,9 @@ namespace Framework.Sequencing
                 return;
             }
 
+            var reported = exception;
             var step = _activeStep;
+            var index = CurrentIndex;
             _activeStep = null;
 
             if (step != null)
@@ -252,13 +306,40 @@ namespace Framework.Sequencing
                 {
                     step.Exit(ExitReason.Cancelled);
                 }
-                catch (Exception)
+                catch (Exception exitFailure)
                 {
+                    reported = new AggregateException(exception, exitFailure);
                 }
+
+                Notify(() => StepExited?.Invoke(step, index, ExitReason.Cancelled));
             }
 
             ChangeState(SequenceState.Faulted);
-            Faulted?.Invoke(exception);
+            Notify(() => Faulted?.Invoke(reported));
+        }
+
+        private void Notify(Action raiseEvent)
+        {
+            try
+            {
+                raiseEvent();
+            }
+            catch (Exception handlerFailure)
+            {
+                _handlerFailures.Add(handlerFailure);
+            }
+        }
+
+        private void RethrowHandlerFailures()
+        {
+            if (_handlerFailures.Count == 0)
+            {
+                return;
+            }
+
+            var failures = _handlerFailures.ToArray();
+            _handlerFailures.Clear();
+            throw failures.Length == 1 ? failures[0] : new AggregateException(failures);
         }
     }
 }

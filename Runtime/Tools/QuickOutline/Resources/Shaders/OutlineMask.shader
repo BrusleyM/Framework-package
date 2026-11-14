@@ -17,6 +17,7 @@ Shader "Custom/Outline Mask"
         Pass
         {
             Name "Mask"
+            Tags { "LightMode" = "SRPDefaultUnlit" }
             Cull Off
             ZTest [_ZTest]
             ZWrite Off

@@ -134,6 +134,8 @@ public class Outline : MonoBehaviour
 
     void OnDestroy()
     {
+        DisableOutline();
+
         // Destroy material instances
         Destroy(outlineMaskMaterial);
         Destroy(outlineFillMaterial);
@@ -163,6 +165,11 @@ public class Outline : MonoBehaviour
         {
             foreach (var renderer in renderers)
             {
+                if (renderer == null)
+                {
+                    continue;
+                }
+
                 var materials = renderer.sharedMaterials.ToList();
                 materials.Remove(outlineMaskMaterial);
                 materials.Remove(outlineFillMaterial);
