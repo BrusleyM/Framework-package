@@ -13,7 +13,6 @@
 
 Assembly references by name must be updated; references by GUID keep working except the removed `Framework.Extensions`.
 `GameObjectExtension.SetLayerRecursively` and `RevertLayerRecursively` were removed.
-The README previously described `TaskManager` and `BaseTask`; those types never existed in the code.
 
 ### Changed
 - Assemblies renamed under the `Framework.*` prefix and re-layered: `Framework.Audio`, `Framework.CheckPoints`, `Framework.Outline`, `Framework.Tasks`, `Framework.Tools`, `Framework.Sequencing.Unity`.

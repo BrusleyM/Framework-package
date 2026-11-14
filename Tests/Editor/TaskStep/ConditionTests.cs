@@ -3,6 +3,39 @@ using UnityEngine;
 
 namespace Framework.Sequencing.Tests
 {
+    public class ProbeCondition : MonoBehaviour, IStepCondition
+    {
+        public int ArmCount { get; private set; }
+        public int DisarmCount { get; private set; }
+        public bool SatisfiedWhenArmed { get; set; }
+        public bool ThrowWhenArmed { get; set; }
+        public int SubscriberCount => _satisfied?.GetInvocationList().Length ?? 0;
+
+        private System.Action _satisfied;
+
+        public event System.Action Satisfied
+        {
+            add => _satisfied += value;
+            remove => _satisfied -= value;
+        }
+
+        public void Arm()
+        {
+            ArmCount++;
+            if (ThrowWhenArmed)
+            {
+                throw new System.InvalidOperationException("cannot arm");
+            }
+
+            if (SatisfiedWhenArmed)
+            {
+                _satisfied?.Invoke();
+            }
+        }
+
+        public void Disarm() => DisarmCount++;
+    }
+
     public class ConditionTests
     {
         private GameObject _host;
@@ -57,33 +90,54 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
-        public void Skipping_a_condition_task_disarms_it_so_a_late_signal_changes_nothing()
+        public void Skipping_a_condition_task_disarms_its_condition_exactly_once()
         {
-            var task = CreateWaitingTask();
-            var lateCompletions = 0;
-            var runner = new SequenceRunner("task", new ISequenceStep[] { new TaskStep(task, null) });
-            task.Completed += () => lateCompletions++;
+            var probe = _host.AddComponent<ProbeCondition>();
+            var runner = new SequenceRunner("task", new ISequenceStep[] { new TaskStep(CreateWaitingTask(probe), null) });
             runner.Start();
 
             runner.SkipCurrentStep();
-            _signal.Raise();
 
-            Assert.AreEqual(1, lateCompletions);
+            Assert.AreEqual(1, probe.DisarmCount);
+            Assert.AreEqual(0, probe.SubscriberCount);
         }
 
         [Test]
-        public void Restarting_a_condition_task_never_stacks_subscriptions()
+        public void Restarting_a_condition_task_rearms_it_with_a_single_subscription()
         {
-            var task = CreateWaitingTask();
-            var completions = 0;
-            task.Completed += () => completions++;
-            var runner = new SequenceRunner("task", new ISequenceStep[] { new TaskStep(task, null) });
+            var probe = _host.AddComponent<ProbeCondition>();
+            var runner = new SequenceRunner("task", new ISequenceStep[] { new TaskStep(CreateWaitingTask(probe), null) });
             runner.Start();
+
             runner.Restart();
 
-            _signal.Raise();
+            Assert.AreEqual(2, probe.ArmCount);
+            Assert.AreEqual(1, probe.SubscriberCount);
+        }
 
-            Assert.AreEqual(1, completions);
+        [Test]
+        public void A_condition_task_whose_condition_is_already_satisfied_completes_while_starting()
+        {
+            var probe = _host.AddComponent<ProbeCondition>();
+            probe.SatisfiedWhenArmed = true;
+            var runner = new SequenceRunner("task", new ISequenceStep[] { new TaskStep(CreateWaitingTask(probe), null) });
+
+            runner.Start();
+
+            Assert.AreEqual(SequenceState.Completed, runner.State);
+        }
+
+        [Test]
+        public void A_condition_that_throws_while_arming_leaves_no_subscription_behind()
+        {
+            var probe = _host.AddComponent<ProbeCondition>();
+            probe.ThrowWhenArmed = true;
+            var runner = new SequenceRunner("task", new ISequenceStep[] { new TaskStep(CreateWaitingTask(probe), null) });
+
+            runner.Start();
+
+            Assert.AreEqual(SequenceState.Faulted, runner.State);
+            Assert.AreEqual(0, probe.SubscriberCount);
         }
 
         [Test]
@@ -99,9 +153,14 @@ namespace Framework.Sequencing.Tests
 
         private WaitForConditionTask CreateWaitingTask()
         {
+            return CreateWaitingTask(_signal);
+        }
+
+        private WaitForConditionTask CreateWaitingTask(MonoBehaviour conditionSource)
+        {
             var task = _host.AddComponent<WaitForConditionTask>();
             var serialized = new UnityEditor.SerializedObject(task);
-            serialized.FindProperty("_conditionSource").objectReferenceValue = _signal;
+            serialized.FindProperty("_conditionSource").objectReferenceValue = conditionSource;
             serialized.ApplyModifiedPropertiesWithoutUndo();
             return task;
         }

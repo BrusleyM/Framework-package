@@ -57,6 +57,7 @@ namespace Framework.Sequencing
             var isLayerAccepted = (_contactingLayers.value & (1 << contacting.layer)) != 0;
             if (isLayerAccepted)
             {
+                _isArmed = false;
                 Satisfied?.Invoke();
             }
         }
