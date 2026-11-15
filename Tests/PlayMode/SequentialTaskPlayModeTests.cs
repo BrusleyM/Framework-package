@@ -132,19 +132,5 @@ namespace Framework.Sequencing.Tests
             _sequence.AddTask(task);
             return task;
         }
-
-        private sealed class ProbeTask : Task
-        {
-            public string Label { get; set; }
-            public int CancelCount { get; private set; }
-
-            public void Finish() => TaskComplete();
-
-            public override void StartTask()
-            {
-            }
-
-            public override void CancelTask() => CancelCount++;
-        }
     }
 }

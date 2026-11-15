@@ -20,6 +20,7 @@ namespace Framework.Sequencing
         {
             _secondsSinceLastReminder = 0f;
             _inner.Finished += Finish;
+            _inner.Failed += Fail;
             _inner.Enter();
         }
 
@@ -39,9 +40,20 @@ namespace Framework.Sequencing
             }
         }
 
+        protected override void OnPause()
+        {
+            _inner.Pause();
+        }
+
+        protected override void OnResume()
+        {
+            _inner.Resume();
+        }
+
         protected override void OnExit(ExitReason reason)
         {
             _inner.Finished -= Finish;
+            _inner.Failed -= Fail;
             _inner.Exit(reason);
         }
 

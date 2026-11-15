@@ -79,9 +79,16 @@ namespace Framework.Sequencing
         {
             Execute(() =>
             {
-                if (State == SequenceState.Running)
+                if (State != SequenceState.Running)
                 {
-                    ChangeState(SequenceState.Paused);
+                    return;
+                }
+
+                ChangeState(SequenceState.Paused);
+                var step = _activeStep;
+                if (step != null)
+                {
+                    Guard(step.Pause);
                 }
             });
         }
@@ -96,6 +103,11 @@ namespace Framework.Sequencing
                 }
 
                 ChangeState(SequenceState.Running);
+                var step = _activeStep;
+                if (step != null)
+                {
+                    Guard(step.Resume);
+                }
 
                 if (_activeStepFinishedWhilePaused)
                 {
@@ -112,6 +124,25 @@ namespace Framework.Sequencing
                 if (IsInProgress && _activeStep != null)
                 {
                     MoveToNextStep(ExitReason.Skipped);
+                }
+            });
+        }
+
+        public void RestartCurrentStep()
+        {
+            Execute(() =>
+            {
+                if (!IsInProgress || _activeStep == null)
+                {
+                    return;
+                }
+
+                var index = CurrentIndex;
+                LeaveActiveStep(ExitReason.Restarted);
+
+                if (State != SequenceState.Faulted)
+                {
+                    EnterStep(index);
                 }
             });
         }
@@ -200,9 +231,32 @@ namespace Framework.Sequencing
             _activeStep = step;
             _activeStepFinishedWhilePaused = false;
             step.Finished += OnActiveStepFinished;
+            step.Failed += OnActiveStepFailed;
 
             Notify(() => StepEntered?.Invoke(step, index));
             Guard(step.Enter);
+
+            if (State == SequenceState.Paused && _activeStep == step)
+            {
+                Guard(step.Pause);
+            }
+        }
+
+        private void OnActiveStepFailed(Exception failure)
+        {
+            var failingStep = _activeStep;
+            if (failingStep == null)
+            {
+                return;
+            }
+
+            Execute(() =>
+            {
+                if (_activeStep == failingStep)
+                {
+                    Fault(failure);
+                }
+            });
         }
 
         private void OnActiveStepFinished()
@@ -261,6 +315,7 @@ namespace Framework.Sequencing
             var index = CurrentIndex;
             _activeStep = null;
             step.Finished -= OnActiveStepFinished;
+            step.Failed -= OnActiveStepFailed;
 
             Exception exitFailure = null;
             try
@@ -324,6 +379,7 @@ namespace Framework.Sequencing
             if (step != null)
             {
                 step.Finished -= OnActiveStepFinished;
+                step.Failed -= OnActiveStepFailed;
                 try
                 {
                     step.Exit(ExitReason.Cancelled);
