@@ -12,6 +12,8 @@ namespace Framework.Sequencing
         private AudioSource _audioSource;
         [SerializeField]
         private List<Task> _taskList = new List<Task>();
+        [SerializeField]
+        private List<TaskStage> _stages = new List<TaskStage>();
 
         private SequenceRunner _runner;
         private Coroutine _clock;
@@ -19,13 +21,22 @@ namespace Framework.Sequencing
 
         public List<Task> TaskList => _taskList;
         public SequenceRunner Runner => _runner;
-        public Task CurrentTask => (_runner?.CurrentStep as TaskStep)?.Task;
+        public Task CurrentTask => (ActiveTaskRunner?.CurrentStep as TaskStep)?.Task;
+        public string CurrentStageName => (_runner?.CurrentStep as StageStep)?.Name;
+        public int CurrentStageIndex => _runner != null ? _runner.CurrentIndex : -1;
         public bool HasRun => _runner != null && _runner.State != SequenceState.Idle;
         public bool IsRunning => _runner != null && _runner.IsInProgress;
+
+        private SequenceRunner ActiveTaskRunner => (_runner?.CurrentStep as StageStep)?.Stage ?? _runner;
 
         public void AddTask(Task task)
         {
             _taskList.Add(task);
+        }
+
+        public void AddStage(TaskStage stage)
+        {
+            _stages.Add(stage);
         }
 
         public void Run()
@@ -57,9 +68,15 @@ namespace Framework.Sequencing
 
         public void Resume() => _runner?.Resume();
 
-        public void SkipCurrentTask() => _runner?.SkipCurrentStep();
+        public void SkipCurrentTask() => ActiveTaskRunner?.SkipCurrentStep();
 
-        public void GoBack() => _runner?.GoBack();
+        public void GoBack() => ActiveTaskRunner?.GoBack();
+
+        public void SkipCurrentStage() => _runner?.SkipCurrentStep();
+
+        public void GoBackStage() => _runner?.GoBack();
+
+        public void RestartCurrentStage() => _runner?.RestartCurrentStep();
 
         public void Restart()
         {
@@ -96,10 +113,30 @@ namespace Framework.Sequencing
 
         private SequenceRunner BuildRunnerFromTaskList()
         {
-            var steps = new List<ISequenceStep>();
             var audioPlayer = ObtainAudioPlayer();
 
-            foreach (var task in _taskList)
+            if (_stages.Count == 0)
+            {
+                return new SequenceRunner(name, StepsFor(_taskList, audioPlayer));
+            }
+
+            var stageSteps = new List<ISequenceStep>();
+            foreach (var stage in _stages)
+            {
+                if (stage != null)
+                {
+                    var stageRunner = new SequenceRunner(stage.StageName, StepsFor(stage.Tasks, audioPlayer));
+                    stageSteps.Add(new StageStep(stage.StageName, stageRunner));
+                }
+            }
+
+            return new SequenceRunner(name, stageSteps);
+        }
+
+        private static List<ISequenceStep> StepsFor(IEnumerable<Task> tasks, AudioPlayer audioPlayer)
+        {
+            var steps = new List<ISequenceStep>();
+            foreach (var task in tasks)
             {
                 if (task != null)
                 {
@@ -107,7 +144,7 @@ namespace Framework.Sequencing
                 }
             }
 
-            return new SequenceRunner(name, steps);
+            return steps;
         }
 
         private AudioPlayer ObtainAudioPlayer()

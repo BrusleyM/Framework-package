@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [2.0.0-preview.2] - 2026-11-15
+
+### Added
+- Stages: `StageStep` and `SequenceBuilder.Stage` group steps into a named stage with its own runner. Skipping, going back and restarting work per stage.
+- `SequenceRunner.RestartCurrentStep`, which restarts the current step or stage.
+- `TaskStage` and the `_stages` list on `SequentialTask` for authoring stages in a scene, with `SkipCurrentStage`, `GoBackStage`, `RestartCurrentStage`, `CurrentStageName` and `CurrentStageIndex`.
+- Steps can report a failure while waiting for an event (`StepBase.Fail`), which faults the sequence, and receive `Pause` and `Resume` (`OnPause`, `OnResume`).
+
+### Breaking
+- `ISequenceStep` gained `Failed`, `Pause` and `Resume`. Steps derived from `StepBase` need no change; steps implementing the interface directly must add them.
+
 ## [2.0.0-preview.1] - 2026-11-15
 
 ### Breaking

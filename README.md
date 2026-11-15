@@ -56,6 +56,29 @@ Behaviour worth knowing:
 - `Restart` works from any state and resumes a paused sequence.
 - An exception thrown by an event handler is rethrown to the caller once the sequence is consistent.
 
+## Stages
+
+A stage is a named group of steps with its own runner inside the sequence. Skipping, going back and restarting then work on a whole stage as well as on a single step.
+
+```csharp
+var tutorial = Sequence.Named("Tutorial")
+    .Stage("Intro", intro => intro
+        .Do("Show welcome", ShowWelcome)
+        .WaitFor("Grab the paddle", paddleGrabbed))
+    .Stage("Hands", hands => hands
+        .WaitFor("Point at the button", pointed)
+        .WaitFor("Pinch", pinched))
+    .Build();
+
+tutorial.SkipCurrentStep();
+tutorial.RestartCurrentStep();
+tutorial.GoBack();
+```
+
+On the outer runner, `SkipCurrentStep` skips the whole running stage (its current step is cleaned up as cancelled), `RestartCurrentStep` begins the current stage again from its first step, and `GoBack` returns to the previous stage from its first step. The runner inside a stage is `StageStep.Stage`, and moves one step at a time. Pausing the sequence pauses the running stage, and a failure inside a stage faults the whole sequence.
+
+In a scene, add a `TaskStage` component per stage, list its tasks, and list the stages on `SequentialTask`. When any stage is listed they replace the plain task list. `SkipCurrentTask` and `GoBack` move within the current stage, and `SkipCurrentStage`, `GoBackStage` and `RestartCurrentStage` move between stages. `CurrentStageName` and `CurrentStageIndex` say where the player is.
+
 ## Steps that wait for the player
 
 A condition implements `IStepCondition`: it is armed when the step starts and disarmed when the step ends, whatever the reason. A condition may be satisfied synchronously while arming.
@@ -87,7 +110,7 @@ public sealed class ShowHintStep : StepBase
 }
 ```
 
-Call `Finish()` from any event handler to complete the step. `OnExit` runs on every exit path (completed, skipped, rewound, restarted, cancelled), so clean up there.
+Call `Finish()` from any event handler to complete the step, or `Fail(exception)` to fault the sequence. Override `OnPause` and `OnResume` if the step has its own timers or audio to hold. `OnExit` runs on every exit path (completed, skipped, rewound, restarted, cancelled), so clean up there.
 
 ## Installation
 

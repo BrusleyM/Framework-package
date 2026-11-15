@@ -295,5 +295,94 @@ namespace Framework.Sequencing.Tests
 
             Assert.AreEqual(new[] { "exited", "faulted" }, order);
         }
+
+        [Test]
+        public void Restarting_the_current_step_exits_it_as_restarted_and_enters_the_same_step_again()
+        {
+            var runner = RunnerOf(_first, _second);
+            runner.Start();
+            _first.FinishNow();
+
+            runner.RestartCurrentStep();
+
+            Assert.AreEqual(ExitReason.Restarted, _second.LastExitReason);
+            Assert.AreEqual(1, runner.CurrentIndex);
+            Assert.AreEqual(2, _journal.FindAll(entry => entry == "enter second").Count);
+        }
+
+        [Test]
+        public void A_step_that_fails_while_waiting_faults_the_sequence_and_reports_why()
+        {
+            Exception reported = null;
+            var runner = RunnerOf(_first);
+            runner.Faulted += exception => reported = exception;
+            runner.Start();
+            var failure = new InvalidOperationException("lost tracking");
+
+            _first.FailNow(failure);
+
+            Assert.AreEqual(SequenceState.Faulted, runner.State);
+            Assert.AreSame(failure, reported);
+            Assert.AreEqual(ExitReason.Cancelled, _first.LastExitReason);
+        }
+
+        [Test]
+        public void A_failure_from_a_step_that_is_no_longer_active_is_ignored()
+        {
+            var runner = RunnerOf(_first, _second);
+            runner.Start();
+            _first.FinishNow();
+
+            _first.FailNow(new InvalidOperationException("too late"));
+
+            Assert.AreEqual(SequenceState.Running, runner.State);
+        }
+
+        [Test]
+        public void Pausing_and_resuming_reaches_the_active_step_once_each()
+        {
+            var runner = RunnerOf(_first);
+            runner.Start();
+
+            runner.Pause();
+            runner.Resume();
+
+            Assert.AreEqual(1, _first.PauseCount);
+            Assert.AreEqual(1, _first.ResumeCount);
+        }
+
+        [Test]
+        public void A_failing_child_of_a_parallel_step_faults_the_sequence()
+        {
+            var runner = Sequence.Named("both").Together("pair", _first, _second).Build();
+            runner.Start();
+
+            _second.FailNow(new InvalidOperationException("child broke"));
+
+            Assert.AreEqual(SequenceState.Faulted, runner.State);
+        }
+
+        [Test]
+        public void A_failing_inner_step_of_a_reminding_step_faults_the_sequence()
+        {
+            var runner = RunnerOf(new RemindingStep(_first, 1f, () => { }));
+            runner.Start();
+
+            _first.FailNow(new InvalidOperationException("inner broke"));
+
+            Assert.AreEqual(SequenceState.Faulted, runner.State);
+        }
+
+        [Test]
+        public void Pausing_a_parallel_step_pauses_its_children()
+        {
+            var runner = Sequence.Named("both").Together("pair", _first, _second).Build();
+            runner.Start();
+
+            runner.Pause();
+
+            Assert.AreEqual(1, _first.PauseCount);
+            Assert.AreEqual(1, _second.PauseCount);
+        }
     }
 }

@@ -38,6 +38,7 @@ namespace Framework.Sequencing
             for (var index = 0; index < _children.Length; index++)
             {
                 _children[index].Finished += _childFinishedHandlers[index];
+                _children[index].Failed += Fail;
             }
 
             for (var index = 0; index < _children.Length; index++)
@@ -60,11 +61,28 @@ namespace Framework.Sequencing
             }
         }
 
+        protected override void OnPause()
+        {
+            for (var index = 0; index < _enteredChildCount; index++)
+            {
+                _children[index].Pause();
+            }
+        }
+
+        protected override void OnResume()
+        {
+            for (var index = 0; index < _enteredChildCount; index++)
+            {
+                _children[index].Resume();
+            }
+        }
+
         protected override void OnExit(ExitReason reason)
         {
             for (var index = 0; index < _children.Length; index++)
             {
                 _children[index].Finished -= _childFinishedHandlers[index];
+                _children[index].Failed -= Fail;
             }
 
             var failures = new List<Exception>();
