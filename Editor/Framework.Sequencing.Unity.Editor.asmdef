@@ -1,0 +1,19 @@
+{
+    "name": "Framework.Sequencing.Unity.Editor",
+    "rootNamespace": "Framework.Sequencing.Editor",
+    "references": [
+        "Framework.Sequencing.Core",
+        "Framework.Sequencing.Unity"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -8,6 +8,7 @@ A reusable sequencing framework for Unity. Tell a guided flow, such as a tutoria
 |---|---|---|
 | `Framework.Sequencing.Core` | nothing, no engine references | `SequenceRunner`, steps, builder. Time is supplied by the caller. |
 | `Framework.Sequencing.Unity` | Core, Tasks, Audio | `SequentialTask` runner component, `TaskStep`, signal and collider conditions, `WaitForConditionTask` |
+| `Framework.Sequencing.Unity.Editor` | Core, Unity | Editor only. The `SequentialTask` inspector: previous, current and next stage and step, and developer controls. |
 | `Framework.Sequencing.Xr` | Core, XR Interaction Toolkit 3.x | `InteractableCondition`. Compiles only when XRI 3.x is installed (version define `FRAMEWORK_XR_INTERACTION_TOOLKIT`). |
 | `Framework.Tasks` | Audio, CheckPoints, Outline | Scene-authored `Task` components |
 | `Framework.Outline`, `Framework.Audio`, `Framework.CheckPoints`, `Framework.Tools` | | Supporting tools. `Outline` and `Tools` reach `Framework.Sequencing.Unity` only through `Framework.Tasks`. |
@@ -93,6 +94,10 @@ Add a `SequentialTask` to a GameObject, assign an `AudioSource` and list `Task` 
 
 `Run()` does nothing while a sequence is in progress, and starts over once it has ended. `Play(runner)` cancels the current runner first. `Pause`, `Resume`, `SkipCurrentTask`, `GoBack`, `Restart` and `Cancel` act on the running sequence. The component must be active and enabled to run.
 
+## Developer inspector
+
+In play mode the `SequentialTask` inspector shows the sequence state, the previous, current and next stage and step, and buttons for Back, Skip and Restart (per stage), Pause, Resume, Restart and Cancel. It updates on step and state events. It is editor only and adds nothing to builds. `StepWindow.Of(runner)` gives the same previous, current and next names to your own tools.
+
 The Test scene lives at `Samples/Scenes/Test scene.unity`. The `Samples` folder is imported and compiled with the package; it is not offered as a Package Manager sample.
 
 ## Write your own step
@@ -127,8 +132,11 @@ Everything runs in this repository's own GitHub Actions and depends on no consum
 | Workflow | When | What |
 |---|---|---|
 | `ci.yml` | pull requests into `develop` or `master`, pushes to `develop`, by hand | lints the workflows, checks the manifest, `.meta` files, assembly references and changelog, runs the core tests without Unity, then runs the EditMode and play mode tests in a generated host project on Unity 2022.3, Unity 6000.3, and 6000.3 with XR Interaction Toolkit |
-| `release-prepare.yml` | by hand on `develop` | bumps `package.json`, moves the changelog's Unreleased section under the new version, and opens a pull request into `master` |
-| `release-publish.yml` | push to `master` | tags `vX.Y.Z`, creates the GitHub release from the changelog section, and opens a pull request bringing the release back into `develop` |
+| `release-prepare.yml` | by hand on `develop` | bumps `package.json`, moves the changelog's Unreleased section under the new version, and opens a pull request into `develop` |
+| `release-promote.yml` | push to `develop`, by hand | when `develop` holds a prepared version that has no tag yet, opens a pull request from `develop` into `master` |
+| `release-publish.yml` | push to `master` | tags `vX.Y.Z` and creates the GitHub release from the changelog section |
+
+Changes move `feature` to `develop` to `master`. To release: run `release-prepare`, merge its pull request into `develop`, then merge the pull request that `release-promote` opens into `master`. `develop` already holds the version and changelog, so no back-merge is needed.
 
 The version lives only in `package.json`. Choose the bump when you run `release-prepare`: `current` releases the version already written, `stable` drops a `-preview.N` label, `patch`, `minor` and `major` bump that number and reset the lower ones, and `preview` continues `-preview.N`. Pre-releases are published as GitHub pre-releases.
 

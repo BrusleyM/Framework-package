@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   prepare:
-    name: Open the release pull request
+    name: Open the prepare pull request into develop
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:
@@ -34,7 +34,7 @@ jobs:
         run: echo "version=$(python .github/scripts/release_tools.py prepare ${{ inputs.bump }})" >> "$GITHUB_OUTPUT"
       - name: Check the release is complete
         run: python .github/scripts/check_package.py --release
-      - name: Commit on a release branch and open the pull request into master
+      - name: Commit on a release branch and open the pull request into develop
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.bump.outputs.version }}
@@ -44,7 +44,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch --create "release/v$VERSION"
           git add package.json CHANGELOG.md
-          git commit --message "Release $VERSION"
+          git commit --message "Prepare release $VERSION"
           git push origin "release/v$VERSION"
-          gh pr create --base master --head "release/v$VERSION" --title "Release v$VERSION" --body-file release-notes.md
+          gh pr create --base develop --head "release/v$VERSION" --title "Prepare release v$VERSION" --body-file release-notes.md
           gh workflow run ci.yml --ref "release/v$VERSION"

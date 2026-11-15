@@ -124,10 +124,23 @@ def prepare_release(package_root, kind, release_date):
     return new_version
 
 
+def pending_release(package_root, existing_tags):
+    version = read_package_version(package_root)
+    if f"v{version}" in existing_tags:
+        return None
+    changelog = (package_root / "CHANGELOG.md").read_text()
+    try:
+        release_notes(changelog, version)
+    except ReleaseError:
+        return None
+    return version
+
+
 def build_parser():
     parser = argparse.ArgumentParser(description="Version and release notes tooling for the package.")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("version", help="print the version in package.json")
+    commands.add_parser("pending", help="read existing tags from stdin and print the version if it is prepared but not yet tagged")
     prepare = commands.add_parser("prepare", help="bump package.json and promote the changelog's Unreleased section")
     prepare.add_argument("kind", choices=BUMP_KINDS)
     prepare.add_argument("--date", default=datetime.date.today().isoformat())
@@ -140,6 +153,10 @@ def main(arguments, package_root=PACKAGE_ROOT):
     parsed = build_parser().parse_args(arguments)
     if parsed.command == "version":
         print(read_package_version(package_root))
+    elif parsed.command == "pending":
+        version = pending_release(package_root, set(sys.stdin.read().split()))
+        if version is not None:
+            print(version)
     elif parsed.command == "prepare":
         print(prepare_release(package_root, parsed.kind, parsed.date))
     else:
