@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.0.0-preview.1] - 2026-11-15
+
 ### Breaking
 | Old assembly | New assembly |
 |---|---|
