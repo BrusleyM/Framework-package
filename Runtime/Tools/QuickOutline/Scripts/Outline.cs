@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +11,7 @@ public class Outline : MonoBehaviour
     private static HashSet<Mesh> registeredMeshes = new HashSet<Mesh>();
 
     public UnityEvent OutlineActive;
+    public event Action Disabled;
     [SerializeField]
     private bool outlineOn = false;
     public enum Mode
@@ -28,7 +29,7 @@ public class Outline : MonoBehaviour
         set
         {
             outlineMode = value;
-            needsUpdate = true;
+            ApplyMaterialProperties();
         }
     }
 
@@ -38,7 +39,7 @@ public class Outline : MonoBehaviour
         set
         {
             outlineColor = value;
-            needsUpdate = true;
+            ApplyMaterialProperties();
         }
     }
 
@@ -48,7 +49,7 @@ public class Outline : MonoBehaviour
         set
         {
             outlineWidth = value;
-            needsUpdate = true;
+            ApplyMaterialProperties();
         }
     }
 
@@ -85,8 +86,6 @@ public class Outline : MonoBehaviour
     private Material outlineMaskMaterial;
     private Material outlineFillMaterial;
 
-    private bool needsUpdate;
-    private Coroutine updateCoroutine;
 
     void Awake()
     {
@@ -94,8 +93,8 @@ public class Outline : MonoBehaviour
         renderers = GetComponentsInChildren<Renderer>();
 
         // Instantiate outline materials
-        outlineMaskMaterial = Instantiate(Resources.Load<Material>(@"Materials/OutlineMask"));
-        outlineFillMaterial = Instantiate(Resources.Load<Material>(@"Materials/OutlineFill"));
+        outlineMaskMaterial = Instantiate(LoadOutlineMaterial("OutlineMask"));
+        outlineFillMaterial = Instantiate(LoadOutlineMaterial("OutlineFill"));
 
         outlineMaskMaterial.name = "OutlineMask (Instance)";
         outlineFillMaterial.name = "OutlineFill (Instance)";
@@ -103,8 +102,24 @@ public class Outline : MonoBehaviour
         // Retrieve or generate smooth normals
         LoadSmoothNormals();
 
-        // Apply material properties immediately
-        needsUpdate = true;
+        ApplyMaterialProperties();
+    }
+
+    static Material LoadOutlineMaterial(string materialName)
+    {
+        var material = Resources.Load<Material>("Materials/" + materialName);
+        if (material == null)
+        {
+            throw new InvalidOperationException("Outline material 'Materials/" + materialName + "' is missing from a Resources folder.");
+        }
+
+        return material;
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ForgetRegisteredMeshes()
+    {
+        registeredMeshes.Clear();
     }
 
     //public void OnEnable()
@@ -119,6 +134,8 @@ public class Outline : MonoBehaviour
 
     void OnDestroy()
     {
+        DisableOutline();
+
         // Destroy material instances
         Destroy(outlineMaskMaterial);
         Destroy(outlineFillMaterial);
@@ -126,23 +143,22 @@ public class Outline : MonoBehaviour
 
     public void EnableOutline()
     {
-        if (!outlineOn)
+        if (!outlineOn && outlineMaskMaterial != null && outlineFillMaterial != null)
         {
             foreach (var renderer in renderers)
             {
-                // Append outline shaders
+                if (renderer == null)
+                {
+                    continue;
+                }
+
                 var materials = renderer.sharedMaterials.ToList();
                 materials.Add(outlineMaskMaterial);
                 materials.Add(outlineFillMaterial);
-                renderer.materials = materials.ToArray();
+                renderer.sharedMaterials = materials.ToArray();
             }
             outlineOn = true;
-
-            // Start the update coroutine
-            if (updateCoroutine == null)
-            {
-                updateCoroutine = StartCoroutine(UpdateMaterialCoroutine());
-            }
+            ApplyMaterialProperties();
 
             OutlineActive.Invoke();
         }
@@ -154,27 +170,28 @@ public class Outline : MonoBehaviour
         {
             foreach (var renderer in renderers)
             {
-                // Remove outline shaders
+                if (renderer == null)
+                {
+                    continue;
+                }
+
                 var materials = renderer.sharedMaterials.ToList();
                 materials.Remove(outlineMaskMaterial);
                 materials.Remove(outlineFillMaterial);
-                renderer.materials = materials.ToArray();
+                renderer.sharedMaterials = materials.ToArray();
             }
             outlineOn = false;
 
-            // Stop the update coroutine
-            if (updateCoroutine != null)
-            {
-                StopCoroutine(updateCoroutine);
-                updateCoroutine = null;
-            }
+            Disabled?.Invoke();
         }
     }
 
     void OnValidate()
     {
-        // Update material properties
-        needsUpdate = true;
+        if (Application.isPlaying)
+        {
+            ApplyMaterialProperties();
+        }
 
         // Clear cache when baking is disabled or corrupted
         if (!precomputeOutline && bakeKeys.Count != 0 || bakeKeys.Count != bakeValues.Count)
@@ -187,19 +204,6 @@ public class Outline : MonoBehaviour
         if (precomputeOutline && bakeKeys.Count == 0)
         {
             Bake();
-        }
-    }
-
-    private IEnumerator UpdateMaterialCoroutine()
-    {
-        while (outlineOn)
-        {
-            if (needsUpdate)
-            {
-                needsUpdate = false;
-                UpdateMaterialProperties();
-            }
-            yield return null; // Wait until the next frame
         }
     }
 
@@ -323,8 +327,13 @@ public class Outline : MonoBehaviour
         mesh.SetTriangles(mesh.triangles, mesh.subMeshCount - 1);
     }
 
-    void UpdateMaterialProperties()
+    void ApplyMaterialProperties()
     {
+        if (outlineFillMaterial == null || outlineMaskMaterial == null)
+        {
+            return;
+        }
+
         // Apply properties according to mode
         outlineFillMaterial.SetColor("_OutlineColor", outlineColor);
 

@@ -1,30 +1,27 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
-using Framework.Tasks;
 using Framework.Audio;
+using Framework.Tasks;
+using UnityEngine;
 
-namespace Framework.Sequential
+namespace Framework.Sequencing
 {
     public class SequentialTask : MonoBehaviour
     {
         [SerializeField]
         private AudioSource _audioSource;
         [SerializeField]
-        private List<Task> _taskList;
-        private Coroutine _currentCoroutine;
-        private Task _currentTask;
+        private List<Task> _taskList = new List<Task>();
+
+        private SequenceRunner _runner;
+        private Coroutine _clock;
         private AudioPlayer _audioPlayer;
-        private bool _hasRun = false;
 
         public List<Task> TaskList => _taskList;
-        public Task CurrentTask => _currentTask;
-        public bool HasRun => _hasRun;
-
-        private void OnEnable()
-        {
-            _audioPlayer = new AudioPlayer(_audioSource);
-        }
+        public SequenceRunner Runner => _runner;
+        public Task CurrentTask => (_runner?.CurrentStep as TaskStep)?.Task;
+        public bool HasRun => _runner != null && _runner.State != SequenceState.Idle;
+        public bool IsRunning => _runner != null && _runner.IsInProgress;
 
         public void AddTask(Task task)
         {
@@ -33,51 +30,140 @@ namespace Framework.Sequential
 
         public void Run()
         {
-            if (_currentCoroutine == null && !_hasRun)
+            if (IsRunning)
             {
-                _hasRun = true;
-                _currentCoroutine = StartCoroutine(RunTasks());
+                return;
             }
+
+            Play(BuildRunnerFromTaskList());
         }
 
-        private IEnumerator RunTasks()
+        public void Play(SequenceRunner runner)
         {
+            if (!isActiveAndEnabled)
+            {
+                throw new System.InvalidOperationException($"{name} must be active and enabled to run a sequence.");
+            }
+
+            Cancel();
+
+            _runner = runner;
+            _runner.Faulted += LogFault;
+            EnsureClockIsRunning();
+            _runner.Start();
+        }
+
+        public void Pause() => _runner?.Pause();
+
+        public void Resume() => _runner?.Resume();
+
+        public void SkipCurrentTask() => _runner?.SkipCurrentStep();
+
+        public void GoBack() => _runner?.GoBack();
+
+        public void Restart()
+        {
+            if (_runner == null)
+            {
+                return;
+            }
+
+            _runner.Faulted -= LogFault;
+            _runner.Faulted += LogFault;
+            _runner.Restart();
+            EnsureClockIsRunning();
+        }
+
+        public void Cancel()
+        {
+            StopClock();
+
+            if (_runner == null)
+            {
+                return;
+            }
+
+            _runner.Faulted -= LogFault;
+            _runner.Cancel();
+        }
+
+        public void StopExecution() => Cancel();
+
+        private void OnDisable()
+        {
+            Cancel();
+        }
+
+        private SequenceRunner BuildRunnerFromTaskList()
+        {
+            var steps = new List<ISequenceStep>();
+            var audioPlayer = ObtainAudioPlayer();
+
             foreach (var task in _taskList)
             {
-                _currentTask = task;
-                _currentTask.SetAudioPlayer(_audioPlayer);
-                _currentTask.StartTask();
-
-                yield return new WaitUntil(() => _currentTask.IsComplete);
-
-                if (_currentTask is ActionTask actionTask)
+                if (task != null)
                 {
-                    yield return new WaitUntil(() => !actionTask.IsFeedbackAudioPlaying());
+                    steps.Add(new TaskStep(task, audioPlayer));
+                }
+            }
+
+            return new SequenceRunner(name, steps);
+        }
+
+        private AudioPlayer ObtainAudioPlayer()
+        {
+            if (_audioPlayer == null && _audioSource != null)
+            {
+                _audioPlayer = new AudioPlayer(_audioSource);
+            }
+
+            return _audioPlayer;
+        }
+
+        private void EnsureClockIsRunning()
+        {
+            if (!isActiveAndEnabled)
+            {
+                throw new System.InvalidOperationException($"{name} must be active and enabled to run a sequence.");
+            }
+
+            if (_clock == null)
+            {
+                _clock = StartCoroutine(TickWhileInProgress());
+            }
+        }
+
+        private void StopClock()
+        {
+            if (_clock != null)
+            {
+                StopCoroutine(_clock);
+                _clock = null;
+            }
+        }
+
+        private IEnumerator TickWhileInProgress()
+        {
+            while (_runner != null && (_runner.State == SequenceState.Idle || _runner.IsInProgress))
+            {
+                try
+                {
+                    _runner.Advance(Time.deltaTime);
+                }
+                catch (System.Exception exception)
+                {
+                    Debug.LogException(exception, this);
                 }
 
-                _currentTask.OnCompleteTask?.Invoke();
+                yield return null;
             }
 
-            StopExecution();
+            _clock = null;
         }
 
-        public void StopExecution()
+        private static void LogFault(System.Exception exception)
         {
-            if (_currentCoroutine != null)
-            {
-                StopCoroutine(_currentCoroutine);
-                _currentCoroutine = null;
-            }
-
-            _taskList.Clear();
-            _currentTask = null;
-            _hasRun = false;
-        }
-
-        public void SkipCurrentTask()
-        {
-            _currentTask?.Skip();
-            _currentTask?.TaskComplete();
+            Debug.LogException(exception);
         }
     }
 }

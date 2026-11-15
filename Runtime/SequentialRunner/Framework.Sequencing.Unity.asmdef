@@ -1,0 +1,18 @@
+{
+    "name": "Framework.Sequencing.Unity",
+    "rootNamespace": "Framework.Sequencing",
+    "references": [
+        "Framework.Sequencing.Core",
+        "Framework.Tasks",
+        "Framework.Audio"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

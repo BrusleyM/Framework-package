@@ -1,0 +1,14 @@
+{
+    "name": "Framework.Tasks",
+    "rootNamespace": "Framework.Tasks",
+    "references": ["Framework.Audio","Framework.CheckPoints","Framework.Outline"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

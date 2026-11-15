@@ -1,0 +1,67 @@
+name: Release publish
+
+on:
+  push:
+    branches: [master]
+
+concurrency:
+  group: release
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  publish:
+    name: Tag and publish the release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Read the version and see whether it is already released
+        id: version
+        run: |
+          version=$(python .github/scripts/release_tools.py version)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git rev-parse --verify --quiet "refs/tags/v$version" > /dev/null; then
+            echo "already_released=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::v$version is already tagged; nothing to publish."
+          else
+            echo "already_released=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check the release is complete
+        if: steps.version.outputs.already_released == 'false'
+        run: python .github/scripts/check_package.py --release
+      - name: Tag and create the GitHub release
+        if: steps.version.outputs.already_released == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python .github/scripts/release_tools.py notes "$VERSION" > release-notes.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag --annotate "v$VERSION" --message "Release $VERSION"
+          git push origin "v$VERSION"
+          prerelease=""
+          case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "v$VERSION" --verify-tag --title "v$VERSION" --notes-file release-notes.md $prerelease
+      - name: Open a pull request that brings the release back into develop
+        if: steps.version.outputs.already_released == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git fetch origin develop
+          if git merge-base --is-ancestor origin/master origin/develop; then
+            echo "develop already contains master."
+          else
+            git push origin "origin/master:refs/heads/back-merge/v$VERSION"
+            gh pr create --base develop --head "back-merge/v$VERSION" --title "Bring release v$VERSION back into develop" --body "Keeps develop's version and changelog in step with master after the release."
+            gh workflow run ci.yml --ref "back-merge/v$VERSION"
+          fi

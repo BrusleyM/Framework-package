@@ -1,4 +1,4 @@
-using Framework.Sequential;
+using Framework.Sequencing;
 using UnityEngine;
 
 namespace FrameworkTest

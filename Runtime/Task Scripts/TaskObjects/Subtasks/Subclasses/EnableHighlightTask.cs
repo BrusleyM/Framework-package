@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Framework.Tasks
@@ -14,7 +12,16 @@ namespace Framework.Tasks
         public override void Execute()
         {
             gameObjectToEnable.SetActive(true);
+            highlightTask.Prepare();
+            highlightTask.Completed -= MarkComplete;
+            highlightTask.Completed += MarkComplete;
             highlightTask.Execute();
+        }
+
+        public override void Cancel()
+        {
+            highlightTask.Completed -= MarkComplete;
+            highlightTask.Cancel();
         }
     }
 }

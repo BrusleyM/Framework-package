@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Framework.Tasks
@@ -7,10 +5,28 @@ namespace Framework.Tasks
     public class TrackCheckPoint : GameObjectTask
     {
         [SerializeField]
-        ActionTask _taskPoints;
+        private ActionTask _taskPoints;
+
         public override void Execute()
         {
-            _taskPoints.CheckPointsParent.OnAllChecked.AddListener(() => IsComplete = true);
+            StopTracking();
+            _taskPoints.CheckPointsParent.OnAllChecked.AddListener(CompleteAndStopTracking);
+        }
+
+        public override void Cancel()
+        {
+            StopTracking();
+        }
+
+        private void CompleteAndStopTracking()
+        {
+            StopTracking();
+            MarkComplete();
+        }
+
+        private void StopTracking()
+        {
+            _taskPoints.CheckPointsParent.OnAllChecked.RemoveListener(CompleteAndStopTracking);
         }
     }
 }

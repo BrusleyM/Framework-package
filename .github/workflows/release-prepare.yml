@@ -1,0 +1,50 @@
+name: Release prepare
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: current releases the version already in package.json
+        type: choice
+        options: [current, stable, patch, minor, major, preview]
+        default: current
+
+concurrency:
+  group: release
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  prepare:
+    name: Open the release pull request
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bump the version and promote the changelog
+        id: bump
+        run: echo "version=$(python .github/scripts/release_tools.py prepare ${{ inputs.bump }})" >> "$GITHUB_OUTPUT"
+      - name: Check the release is complete
+        run: python .github/scripts/check_package.py --release
+      - name: Commit on a release branch and open the pull request into master
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          python .github/scripts/release_tools.py notes "$VERSION" > release-notes.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --create "release/v$VERSION"
+          git add package.json CHANGELOG.md
+          git commit --message "Release $VERSION"
+          git push origin "release/v$VERSION"
+          gh pr create --base master --head "release/v$VERSION" --title "Release v$VERSION" --body-file release-notes.md
+          gh workflow run ci.yml --ref "release/v$VERSION"
