@@ -11,6 +11,8 @@
 ### Breaking
 - `ISequenceStep` gained `Failed`, `Pause` and `Resume`. Steps derived from `StepBase` need no change; steps implementing the interface directly must add them.
 
+## [2.0.0-preview.1] - 2026-11-15
+
 ### Breaking
 | Old assembly | New assembly |
 |---|---|
