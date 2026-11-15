@@ -121,6 +121,32 @@ class PrepareReleaseTests(unittest.TestCase):
             self.assertEqual(changelog, (root / "CHANGELOG.md").read_text())
 
 
+class PendingReleaseTests(unittest.TestCase):
+    def package_with(self, folder, version, changelog):
+        root = pathlib.Path(folder)
+        (root / "package.json").write_text(json.dumps({"name": "x", "version": version}))
+        (root / "CHANGELOG.md").write_text(changelog)
+        return root
+
+    def test_a_prepared_version_that_is_not_tagged_is_pending(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self.package_with(folder, "1.0.0", CHANGELOG)
+
+            self.assertEqual("1.0.0", str(release_tools.pending_release(root, {"v0.9.0"})))
+
+    def test_a_version_that_is_already_tagged_is_not_pending(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self.package_with(folder, "1.0.0", CHANGELOG)
+
+            self.assertIsNone(release_tools.pending_release(root, {"v1.0.0"}))
+
+    def test_a_version_without_a_changelog_section_is_not_pending(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = self.package_with(folder, "1.1.0", CHANGELOG)
+
+            self.assertIsNone(release_tools.pending_release(root, {"v1.0.0"}))
+
+
 def write_asset(root, relative, content="", guid=None):
     path = root / relative
     path.parent.mkdir(parents=True, exist_ok=True)

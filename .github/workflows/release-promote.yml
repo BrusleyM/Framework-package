@@ -1,0 +1,41 @@
+name: Release promote
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  promote:
+    name: Open the release pull request from develop into master
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Find a prepared release that is not tagged yet
+        id: pending
+        run: echo "version=$(git tag --list 'v*' | python .github/scripts/release_tools.py pending)" >> "$GITHUB_OUTPUT"
+      - name: Open the pull request into master unless one is already open
+        if: steps.pending.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.pending.outputs.version }}
+        run: |
+          open_requests=$(gh pr list --base master --head develop --state open --json number --jq length)
+          if [ "$open_requests" != "0" ]; then
+            echo "::notice::A pull request from develop into master is already open."
+            exit 0
+          fi
+          python .github/scripts/release_tools.py notes "$VERSION" > release-notes.md
+          gh pr create --base master --head develop --title "Release v$VERSION" --body-file release-notes.md
