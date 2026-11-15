@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-15
+
+### Changed
+- First stable release. It is 2.0.0-preview.3 with no code changes: the sequencer, stages, XR conditions and the developer inspector are now the supported 2.0 API.
+
 ## [2.0.0-preview.3] - 2026-11-15
 
 ### Added
