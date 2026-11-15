@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+- `SequentialTask` inspector for developers (editor only): state, previous, current and next stage and step, and controls for back, skip, restart, pause, resume and cancel.
+- `SequenceRunner.Steps` and `StepWindow.Of(runner)`, which name the previous, current and next step.
+
 ## [2.0.0-preview.2] - 2026-11-15
 
 ### Added
