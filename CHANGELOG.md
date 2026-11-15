@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] - 2.0.0-preview.1
+## [Unreleased]
 
 ### Breaking
 | Old assembly | New assembly |
@@ -15,6 +15,7 @@ Assembly references by name must be updated; references by GUID keep working exc
 `GameObjectExtension.SetLayerRecursively` and `RevertLayerRecursively` were removed.
 
 ### Fixed
+- The package now declares the built-in modules it uses (animation, audio, physics); a project without them failed to compile.
 - Restarting a sequence that had already finished started it without a clock, so timed steps never advanced.
 - `EnableTask` now completes as soon as it has enabled its GameObject, so sub tasks listed after it start.
 
@@ -35,6 +36,7 @@ Assembly references by name must be updated; references by GUID keep working exc
 
 ### Added
 - MIT license.
+- Continuous integration and release workflows that test the package in a generated host project.
 - `Framework.Sequencing.Core`: pure C# `SequenceRunner` with start, pause, resume, skip, back, restart and cancel, plus instant, delay, wait-for-condition, parallel and reminding steps and a fluent `Sequence` builder.
 - `SequentialTask` now runs on the runner and exposes pause, resume, back, restart and cancel. `Run()` can start a finished sequence again and no longer clears the task list.
 - Event-driven conditions: `SignalCondition`, `ColliderContactCondition`, `InteractableCondition`.
