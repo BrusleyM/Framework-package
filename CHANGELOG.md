@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.0.0-preview.2] - 2026-11-15
+
 ### Added
 - Stages: `StageStep` and `SequenceBuilder.Stage` group steps into a named stage with its own runner. Skipping, going back and restarting work per stage.
 - `SequenceRunner.RestartCurrentStep`, which restarts the current step or stage.
