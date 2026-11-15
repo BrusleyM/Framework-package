@@ -44,6 +44,13 @@ namespace Framework.Sequencing
             return Then(new ParallelStep(stepName, steps));
         }
 
+        public SequenceBuilder Stage(string stageName, System.Action<SequenceBuilder> describeStage)
+        {
+            var stageBuilder = new SequenceBuilder(stageName);
+            describeStage(stageBuilder);
+            return Then(new StageStep(stageName, stageBuilder.Build()));
+        }
+
         public SequenceRunner Build()
         {
             return new SequenceRunner(_sequenceName, _steps);

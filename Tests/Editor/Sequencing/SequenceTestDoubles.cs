@@ -16,8 +16,16 @@ namespace Framework.Sequencing.Tests
 
         public float AdvancedSeconds { get; private set; }
         public ExitReason? LastExitReason { get; private set; }
+        public int PauseCount { get; private set; }
+        public int ResumeCount { get; private set; }
 
         public void FinishNow() => Finish();
+
+        public void FailNow(Exception failure) => Fail(failure);
+
+        protected override void OnPause() => PauseCount++;
+
+        protected override void OnResume() => ResumeCount++;
 
         protected override void OnEnter()
         {
