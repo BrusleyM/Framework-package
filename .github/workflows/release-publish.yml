@@ -9,8 +9,6 @@ concurrency:
 
 permissions:
   contents: write
-  pull-requests: write
-  actions: write
 
 jobs:
   publish:
@@ -51,17 +49,3 @@ jobs:
           prerelease=""
           case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
           gh release create "v$VERSION" --verify-tag --title "v$VERSION" --notes-file release-notes.md $prerelease
-      - name: Open a pull request that brings the release back into develop
-        if: steps.version.outputs.already_released == 'false'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          git fetch origin develop
-          if git merge-base --is-ancestor origin/master origin/develop; then
-            echo "develop already contains master."
-          else
-            git push origin "origin/master:refs/heads/back-merge/v$VERSION"
-            gh pr create --base develop --head "back-merge/v$VERSION" --title "Bring release v$VERSION back into develop" --body "Keeps develop's version and changelog in step with master after the release."
-            gh workflow run ci.yml --ref "back-merge/v$VERSION"
-          fi
