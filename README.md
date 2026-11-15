@@ -8,6 +8,7 @@ A reusable sequencing framework for Unity. Tell a guided flow, such as a tutoria
 |---|---|---|
 | `Framework.Sequencing.Core` | nothing, no engine references | `SequenceRunner`, steps, builder. Time is supplied by the caller. |
 | `Framework.Sequencing.Unity` | Core, Tasks, Audio | `SequentialTask` runner component, `TaskStep`, signal and collider conditions, `WaitForConditionTask` |
+| `Framework.Sequencing.Unity.Editor` | Core, Unity | Editor only. The `SequentialTask` inspector: previous, current and next stage and step, and developer controls. |
 | `Framework.Sequencing.Xr` | Core, XR Interaction Toolkit 3.x | `InteractableCondition`. Compiles only when XRI 3.x is installed (version define `FRAMEWORK_XR_INTERACTION_TOOLKIT`). |
 | `Framework.Tasks` | Audio, CheckPoints, Outline | Scene-authored `Task` components |
 | `Framework.Outline`, `Framework.Audio`, `Framework.CheckPoints`, `Framework.Tools` | | Supporting tools. `Outline` and `Tools` reach `Framework.Sequencing.Unity` only through `Framework.Tasks`. |
@@ -92,6 +93,10 @@ A condition implements `IStepCondition`: it is armed when the step starts and di
 Add a `SequentialTask` to a GameObject, assign an `AudioSource` and list `Task` components. `ActionTask` combines narration, reminders, sub tasks and check points. `WaitForConditionTask` waits for any condition component.
 
 `Run()` does nothing while a sequence is in progress, and starts over once it has ended. `Play(runner)` cancels the current runner first. `Pause`, `Resume`, `SkipCurrentTask`, `GoBack`, `Restart` and `Cancel` act on the running sequence. The component must be active and enabled to run.
+
+## Developer inspector
+
+In play mode the `SequentialTask` inspector shows the sequence state, the previous, current and next stage and step, and buttons for Back, Skip and Restart (per stage), Pause, Resume, Restart and Cancel. It updates on step and state events. It is editor only and adds nothing to builds. `StepWindow.Of(runner)` gives the same previous, current and next names to your own tools.
 
 The Test scene lives at `Samples/Scenes/Test scene.unity`. The `Samples` folder is imported and compiled with the package; it is not offered as a Package Manager sample.
 

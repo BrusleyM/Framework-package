@@ -30,6 +30,7 @@ namespace Framework.Sequencing
         public SequenceState State { get; private set; } = SequenceState.Idle;
         public int CurrentIndex { get; private set; } = -1;
         public int StepCount => _steps.Length;
+        public IReadOnlyList<ISequenceStep> Steps => _steps;
         public ISequenceStep CurrentStep => _activeStep;
         public bool IsInProgress => State == SequenceState.Running || State == SequenceState.Paused;
 
