@@ -72,8 +72,27 @@ namespace Framework.Sequencing
                 return;
             }
 
-            var step = _activeStep;
-            Execute(() => Guard(() => step.Advance(deltaSeconds)));
+            _isTransitioning = true;
+            try
+            {
+                try
+                {
+                    _activeStep.Advance(deltaSeconds);
+                }
+                catch (Exception exception)
+                {
+                    Fault(exception);
+                }
+
+                DrainQueuedCommands();
+            }
+            finally
+            {
+                _isTransitioning = false;
+                _queuedCommands.Clear();
+            }
+
+            RethrowHandlerFailures();
         }
 
         public void Pause()
@@ -198,10 +217,7 @@ namespace Framework.Sequencing
             try
             {
                 command();
-                while (_queuedCommands.Count > 0)
-                {
-                    _queuedCommands.Dequeue()();
-                }
+                DrainQueuedCommands();
             }
             finally
             {
@@ -210,6 +226,14 @@ namespace Framework.Sequencing
             }
 
             RethrowHandlerFailures();
+        }
+
+        private void DrainQueuedCommands()
+        {
+            while (_queuedCommands.Count > 0)
+            {
+                _queuedCommands.Dequeue()();
+            }
         }
 
         private void BeginFromFirstStep()

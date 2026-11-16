@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed
+- `SequenceRunner.Advance` no longer allocates on a steady-state tick. Core tests now assert zero allocations and a time budget for a long running sequence.
+
 ## [2.0.0] - 2026-11-15
 
 ### Changed
