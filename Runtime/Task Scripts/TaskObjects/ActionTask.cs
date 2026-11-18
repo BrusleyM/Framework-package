@@ -20,6 +20,8 @@ namespace Framework.Tasks
 
         private Coroutine _reminderRoutine;
         private int _subTaskIndex;
+        private bool _isAdvancingSubtasks;
+        private bool _advanceRequested;
 
         public CheckPointsParent CheckPointsParent => _checkPoints;
         public GameObjectTask CurrentSubtask { get; private set; }
@@ -86,6 +88,7 @@ namespace Framework.Tasks
             StopReminder();
             StopListeningForAllCheckPointsChecked();
             DetachFromCurrentSubTask();
+            _advanceRequested = false;
         }
 
         private void LinkCheckPointsToThisTask()
@@ -160,8 +163,37 @@ namespace Framework.Tasks
 
         private void StartNextSubTask()
         {
+            if (_isAdvancingSubtasks)
+            {
+                _advanceRequested = true;
+                return;
+            }
+
+            _isAdvancingSubtasks = true;
+            try
+            {
+                do
+                {
+                    _advanceRequested = false;
+                    StartTheNextListedSubTask();
+                }
+                while (_advanceRequested);
+            }
+            finally
+            {
+                _isAdvancingSubtasks = false;
+                _advanceRequested = false;
+            }
+        }
+
+        private void StartTheNextListedSubTask()
+        {
             DetachFromCurrentSubTask();
-            _subTaskIndex++;
+            do
+            {
+                _subTaskIndex++;
+            }
+            while (_subTasks != null && _subTaskIndex < _subTasks.Length && _subTasks[_subTaskIndex] == null);
 
             if (_subTasks == null || _subTaskIndex >= _subTasks.Length)
             {
@@ -170,12 +202,6 @@ namespace Framework.Tasks
             }
 
             CurrentSubtask = _subTasks[_subTaskIndex];
-            if (CurrentSubtask == null)
-            {
-                StartNextSubTask();
-                return;
-            }
-
             CurrentSubtask.Prepare();
             CurrentSubtask.Completed += StartNextSubTask;
             CurrentSubtask.Execute();
