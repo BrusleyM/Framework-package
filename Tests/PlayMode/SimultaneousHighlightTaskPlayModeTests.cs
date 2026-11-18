@@ -70,6 +70,41 @@ namespace Framework.Sequencing.Tests
             Assert.IsFalse(_outline.IsOutLined);
         }
 
+        [UnityTest]
+        public IEnumerator Cancelling_a_task_set_to_off_puts_the_highlight_back()
+        {
+            yield return null;
+            _outline.EnableOutline();
+            AssignState(SubtaskState.Off);
+            _task.Execute();
+
+            _task.Cancel();
+
+            Assert.IsTrue(_outline.IsOutLined);
+        }
+
+        [UnityTest]
+        public IEnumerator Cancelling_a_task_set_to_on_removes_the_highlight_it_added()
+        {
+            yield return null;
+            _task.Execute();
+
+            _task.Cancel();
+
+            Assert.IsFalse(_outline.IsOutLined);
+        }
+
+        [UnityTest]
+        public IEnumerator Cancelling_a_task_that_never_ran_leaves_the_highlight_alone()
+        {
+            yield return null;
+            _outline.EnableOutline();
+
+            _task.Cancel();
+
+            Assert.IsTrue(_outline.IsOutLined);
+        }
+
         private void AssignBox()
         {
             var field = typeof(HighlightTask).GetField("gameObjectsToHighlight", Fields);
