@@ -27,6 +27,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check out the core package
+        uses: actions/checkout@v4
+        with:
+          repository: BrusleyM/Framework-core
+          ref: v1.0.0-preview.1
+          path: .core
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -34,10 +40,10 @@ jobs:
         working-directory: .github/scripts
         run: python -m unittest test_release_tools
       - name: Check manifest, meta files, assembly references and changelog
-        run: python .github/scripts/check_package.py
+        run: python .github/scripts/check_package.py --dependency-root .core
       - name: On a pull request into master, require the changelog section of the release
         if: github.event_name == 'pull_request' && github.base_ref == 'master'
-        run: python .github/scripts/check_package.py --release
+        run: python .github/scripts/check_package.py --release --dependency-root .core
 
   core-tests:
     name: Core tests (no Unity)
@@ -84,12 +90,19 @@ jobs:
             exit 1
           fi
       - uses: actions/checkout@v4
+      - name: Check out the core package
+        uses: actions/checkout@v4
+        with:
+          repository: BrusleyM/Framework-core
+          ref: v1.0.0-preview.1
+          path: .core
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Create the host project
         run: >
           python .github/scripts/create_host_project.py .host
+          --dependency "com.vishnu.framework.core=.core"
           --unity "${{ matrix.unity }}"
           --urp "${{ matrix.urp }}"
           --test-framework "${{ matrix.testFramework }}"

@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-11-18
+
+### Changed
+- Breaking: the package is now `com.vishnu.framework.sequencer`. `Framework.CheckPoints`, `Framework.Outline` and `Framework.Tools` moved to the new `com.vishnu.framework.core` package, which this package depends on. Assembly names, namespaces and GUIDs are unchanged. Install both packages in the same project.
+
+### Added
+- README section "Build a sequence in the editor" describing the drag and drop authoring path.
+
+### Fixed
+- Imported samples no longer warn that `EmissionControl.cs` and `MoveTo.cs` do not belong to an assembly definition. They now compile in `Framework.Samples.BaseModels`.
+
+### Changed
+- `SequenceRunner.Advance` no longer allocates on a steady-state tick. Core tests now assert zero allocations and a time budget for a long running sequence.
+
 ## [2.0.0] - 2026-11-15
 
 ### Changed

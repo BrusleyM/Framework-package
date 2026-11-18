@@ -207,6 +207,20 @@ class PackageCheckTests(unittest.TestCase):
 
         self.assertEqual([], check_package.find_unresolved_assembly_references(self.root))
 
+    def test_references_into_a_dependency_package_resolve_by_name_and_by_guid(self):
+        with tempfile.TemporaryDirectory() as folder:
+            dependency_root = pathlib.Path(folder)
+            write_asset(dependency_root, "Shared.asmdef", json.dumps({"name": "Shared", "references": []}), guid="1" * 32)
+            write_asset(
+                self.root,
+                "User.asmdef",
+                json.dumps({"name": "User", "references": ["Shared", "GUID:" + "1" * 32]}),
+                guid="2" * 32,
+            )
+
+            self.assertEqual(2, len(check_package.find_unresolved_assembly_references(self.root)))
+            self.assertEqual([], check_package.find_unresolved_assembly_references(self.root, [dependency_root]))
+
     def test_a_manifest_missing_fields_or_with_a_bad_version_is_reported(self):
         (self.root / "package.json").write_text(json.dumps({"name": "x", "version": "one"}))
 
@@ -226,9 +240,14 @@ class HostProjectTests(unittest.TestCase):
     def test_the_manifest_points_at_the_package_and_makes_its_tests_runnable(self):
         manifest = create_host_project.build_manifest("../..", "17.3.0", "1.6.0")
 
-        self.assertEqual("file:../..", manifest["dependencies"]["com.vishnu.framework"])
-        self.assertEqual(["com.vishnu.framework"], manifest["testables"])
+        self.assertEqual("file:../..", manifest["dependencies"]["com.vishnu.framework.sequencer"])
+        self.assertEqual(["com.vishnu.framework.sequencer"], manifest["testables"])
         self.assertNotIn("com.unity.xr.interaction.toolkit", manifest["dependencies"])
+
+    def test_local_dependencies_are_added_as_file_references(self):
+        manifest = create_host_project.build_manifest("../..", "17.3.0", "1.6.0", None, {"com.vishnu.framework.core": "../../.core"})
+
+        self.assertEqual("file:../../.core", manifest["dependencies"]["com.vishnu.framework.core"])
 
     def test_the_interaction_toolkit_is_only_added_when_asked_for(self):
         manifest = create_host_project.build_manifest("../..", "17.3.0", "1.6.0", "3.0.8")
@@ -274,11 +293,6 @@ class TestResultsTests(unittest.TestCase):
 
     def test_missing_result_files_are_reported(self):
         self.assertEqual(["No test result files were found."], check_test_results.find_problems([]))
-
-
-class ThisPackageTests(unittest.TestCase):
-    def test_this_package_passes_its_own_checks(self):
-        self.assertEqual([], check_package.collect_problems(release_tools.PACKAGE_ROOT))
 
 
 if __name__ == "__main__":
