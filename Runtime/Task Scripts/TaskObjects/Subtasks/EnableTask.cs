@@ -29,6 +29,17 @@ namespace Framework.Tasks
             _hasStateBeforeRun = false;
         }
 
+        [Obsolete("Use Cancel, which puts the game object back to its state before the task ran without completing the task.")]
+        public void DisableGameObject()
+        {
+            if (gameObjectToEnable != null)
+            {
+                gameObjectToEnable.SetActive(false);
+            }
+
+            MarkComplete();
+        }
+
         private void ApplyState()
         {
             if (gameObjectToEnable == null)

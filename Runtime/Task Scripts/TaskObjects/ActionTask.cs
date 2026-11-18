@@ -196,14 +196,12 @@ namespace Framework.Tasks
                 return;
             }
 
-            foreach (var subTask in _subTasks)
+            for (var index = _subTasks.Length - 1; index >= 0; index--)
             {
-                if (subTask == null)
+                if (_subTasks[index] != null)
                 {
-                    continue;
+                    _subTasks[index].Cancel();
                 }
-
-                subTask.Cancel();
             }
         }
     }

@@ -135,6 +135,36 @@ namespace Framework.Sequencing.Tests
             Assert.IsFalse(_target.activeSelf);
         }
 
+        [Test]
+        public void The_obsolete_disable_method_still_switches_the_game_object_off_and_completes_the_task()
+        {
+            _enableTask.Execute();
+            _enableTask.Prepare();
+
+#pragma warning disable CS0618
+            _enableTask.DisableGameObject();
+#pragma warning restore CS0618
+
+            Assert.IsFalse(_target.activeSelf);
+            Assert.IsTrue(_enableTask.IsComplete);
+        }
+
+        [Test]
+        public void Tearing_down_two_enable_tasks_on_the_same_object_restores_the_state_it_had_before_either_ran()
+        {
+            var second = _host.AddComponent<EnableTask>();
+            Assign(second, "gameObjectToEnable", _target);
+            AssignStateOn(second, SubtaskState.Off);
+            var action = ActionTaskRunning(_enableTask, second);
+            action.StartTask();
+            _enableTask.Execute();
+            second.Execute();
+
+            action.CancelTask();
+
+            Assert.IsFalse(_target.activeSelf);
+        }
+
         private ParallelSubtask ParallelGroupOf(params GameObjectTask[] subtasks)
         {
             var group = _host.AddComponent<ParallelSubtask>();
@@ -251,6 +281,13 @@ namespace Framework.Sequencing.Tests
             _enableTask.Execute();
 
             Assert.IsTrue(_target.activeSelf);
+        }
+
+        private static void AssignStateOn(EnableTask task, SubtaskState state)
+        {
+            var serialized = new SerializedObject(task);
+            serialized.FindProperty("_state").enumValueIndex = (int)state;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private void AssignState(SubtaskState state)
