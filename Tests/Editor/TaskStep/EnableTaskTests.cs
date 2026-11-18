@@ -135,6 +135,20 @@ namespace Framework.Sequencing.Tests
             Assert.IsFalse(_target.activeSelf);
         }
 
+        [Test]
+        public void The_obsolete_disable_method_still_switches_the_game_object_off_and_completes_the_task()
+        {
+            _enableTask.Execute();
+            _enableTask.Prepare();
+
+#pragma warning disable CS0618
+            _enableTask.DisableGameObject();
+#pragma warning restore CS0618
+
+            Assert.IsFalse(_target.activeSelf);
+            Assert.IsTrue(_enableTask.IsComplete);
+        }
+
         private ParallelSubtask ParallelGroupOf(params GameObjectTask[] subtasks)
         {
             var group = _host.AddComponent<ParallelSubtask>();

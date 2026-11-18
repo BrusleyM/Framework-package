@@ -3,10 +3,13 @@
 ## [Unreleased]
 
 ### Added
-- `ParallelSubtask`: a subtask that holds a list of other subtasks, starts them all at once and completes when every one of them has completed. Put it in an action task's subtask list to run, for example, a highlight and an enable together while the rest of the list still runs in order.
+- `ParallelSubtask`: a subtask that holds a list of other subtasks, starts them all at once and completes when every one of them has completed. A slot that would make a group contain itself, directly or through another group, is cleared with an error. Put it in an action task's subtask list to run, for example, a highlight and an enable together while the rest of the list still runs in order.
 
 ### Changed
-- `EnableTask.Cancel` now switches its game object off, so subtasks nested in a `ParallelSubtask` are reset the same way as listed ones. The action task no longer special-cases `EnableTask` when it tears down.
+- `EnableTask.Cancel` now switches its game object off, so subtasks nested in a `ParallelSubtask` are reset the same way as listed ones. The action task no longer special-cases `EnableTask` when it tears down, and it now cancels its subtasks in reverse list order so objects touched by more than one subtask are restored correctly.
+
+### Deprecated
+- `EnableTask.DisableGameObject`: use `Cancel`. It still switches the object off and completes the task, and will be removed in the next major release.
 
 ## [3.0.1] - 2026-11-18
 
