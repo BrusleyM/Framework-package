@@ -10,8 +10,8 @@ A reusable sequencing framework for Unity. Tell a guided flow, such as a tutoria
 | `Framework.Sequencing.Unity` | Core, Tasks, Audio | `SequentialTask` runner component, `TaskStep`, signal and collider conditions, `WaitForConditionTask` |
 | `Framework.Sequencing.Unity.Editor` | Core, Unity | Editor only. The `SequentialTask` inspector: previous, current and next stage and step, and developer controls. |
 | `Framework.Sequencing.Xr` | Core, XR Interaction Toolkit 3.x | `InteractableCondition`. Compiles only when XRI 3.x is installed (version define `FRAMEWORK_XR_INTERACTION_TOOLKIT`). |
-| `Framework.Tasks` | Audio, CheckPoints, Outline | Scene-authored `Task` components |
-| `Framework.Outline`, `Framework.Audio`, `Framework.CheckPoints`, `Framework.Tools` | | Supporting tools. `Outline` and `Tools` reach `Framework.Sequencing.Unity` only through `Framework.Tasks`. |
+| `Framework.Tasks` | Audio, and `Framework.CheckPoints` and `Framework.Outline` from `com.vishnu.framework.core` | Scene-authored `Task` components |
+| `Framework.Audio` | | Narration playback for tasks. |
 
 Requires Unity 2022.3 or newer and the Universal Render Pipeline.
 
@@ -127,7 +127,10 @@ Call `Finish()` from any event handler to complete the step, or `Fail(exception)
 
 ## Installation
 
-Add `https://github.com/BrusleyM/Framework-package.git#develop` in Package Manager once the 2.0 work is merged to `develop`. Before that, use the name of the branch you want after `#`, and a `#2.0.0-preview.1` tag once it is released.
+Install core first, then the sequencer, both by git URL in Package Manager. Unity does not resolve git-URL dependencies, so installing the sequencer alone fails with `Package [com.vishnu.framework.core@1.0.0-preview.1] cannot be found`.
+
+1. `https://github.com/BrusleyM/Framework-core.git#v1.0.0-preview.1`
+2. `https://github.com/BrusleyM/Framework-package.git#develop`, or a release tag once one is published.
 
 ## Tests
 

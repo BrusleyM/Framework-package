@@ -55,7 +55,7 @@ def find_duplicate_guids(package_root):
     return [f"guid {guid} is used by {', '.join(paths)}" for guid, paths in owners.items() if len(paths) > 1]
 
 
-def find_unresolved_assembly_references(package_root):
+def read_assemblies(package_root):
     assemblies = {}
     guids = set()
     for definition in package_root.rglob("*.asmdef"):
@@ -66,14 +66,25 @@ def find_unresolved_assembly_references(package_root):
         match = GUID_PATTERN.search(meta.read_text()) if meta.exists() else None
         if match:
             guids.add(match.group(1))
+    return assemblies, guids
+
+
+def find_unresolved_assembly_references(package_root, dependency_roots=()):
+    assemblies, guids = read_assemblies(package_root)
+    known_names = set(assemblies)
+    known_guids = set(guids)
+    for dependency_root in dependency_roots:
+        dependency_assemblies, dependency_guids = read_assemblies(dependency_root)
+        known_names.update(dependency_assemblies)
+        known_guids.update(dependency_guids)
 
     problems = []
     for name, definition in assemblies.items():
         for reference in json.loads(definition.read_text()).get("references", []):
             if reference.startswith("GUID:"):
-                resolved = reference[len("GUID:"):] in guids
+                resolved = reference[len("GUID:"):] in known_guids
             else:
-                resolved = reference in assemblies or reference in EXTERNAL_ASSEMBLIES
+                resolved = reference in known_names or reference in EXTERNAL_ASSEMBLIES
             if not resolved:
                 problems.append(f"{definition.relative_to(package_root)} references '{reference}', which does not exist")
     return problems
@@ -107,12 +118,12 @@ def find_changelog_problems(package_root, version, require_release_section):
     return []
 
 
-def collect_problems(package_root, require_release_section=False):
+def collect_problems(package_root, require_release_section=False, dependency_roots=()):
     problems = find_manifest_problems(package_root)
     problems += find_missing_metas(package_root)
     problems += find_orphan_metas(package_root)
     problems += find_duplicate_guids(package_root)
-    problems += find_unresolved_assembly_references(package_root)
+    problems += find_unresolved_assembly_references(package_root, dependency_roots)
     if not problems:
         version = release_tools.read_package_version(package_root)
         problems += find_changelog_problems(package_root, version, require_release_section)
@@ -120,8 +131,10 @@ def collect_problems(package_root, require_release_section=False):
 
 
 if __name__ == "__main__":
-    require_release_section = "--release" in sys.argv[1:]
-    found = collect_problems(PACKAGE_ROOT, require_release_section)
+    arguments = sys.argv[1:]
+    require_release_section = "--release" in arguments
+    dependency_roots = [pathlib.Path(path) for flag, path in zip(arguments, arguments[1:]) if flag == "--dependency-root"]
+    found = collect_problems(PACKAGE_ROOT, require_release_section, dependency_roots)
     for problem in found:
         print(f"::error::{problem}")
     print(f"{len(found)} problem(s) found." if found else "Package checks passed.")

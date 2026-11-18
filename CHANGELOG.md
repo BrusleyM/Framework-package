@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed
+- Breaking: the package is now `com.vishnu.framework.sequencer`. `Framework.CheckPoints`, `Framework.Outline` and `Framework.Tools` moved to the new `com.vishnu.framework.core` package, which this package depends on. Assembly names, namespaces and GUIDs are unchanged. Install both packages in the same project.
+
 ### Added
 - README section "Build a sequence in the editor" describing the drag and drop authoring path.
 
