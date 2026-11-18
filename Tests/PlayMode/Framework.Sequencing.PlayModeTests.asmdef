@@ -6,6 +6,7 @@
         "Framework.Sequencing.Unity",
         "Framework.Tasks",
         "Framework.Audio",
+        "Framework.Outline",
         "UnityEngine.TestRunner"
     ],
     "includePlatforms": [],

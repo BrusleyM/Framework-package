@@ -7,13 +7,29 @@ namespace Framework.Tasks
     {
         [SerializeField]
         private GameObject gameObjectToEnable;
+        [SerializeField]
+        private SubtaskState _state = SubtaskState.On;
+
+        private bool _hasStateBeforeRun;
+        private bool _wasActiveBeforeRun;
 
         public override void Execute()
         {
-            EnableGameObject();
+            ApplyState();
             MarkComplete();
         }
 
+        public override void Cancel()
+        {
+            if (_hasStateBeforeRun && gameObjectToEnable != null)
+            {
+                gameObjectToEnable.SetActive(_wasActiveBeforeRun);
+            }
+
+            _hasStateBeforeRun = false;
+        }
+
+        [Obsolete("Use Cancel, which puts the game object back to its state before the task ran without completing the task.")]
         public void DisableGameObject()
         {
             if (gameObjectToEnable != null)
@@ -24,14 +40,20 @@ namespace Framework.Tasks
             MarkComplete();
         }
 
-        protected void EnableGameObject()
+        private void ApplyState()
         {
             if (gameObjectToEnable == null)
             {
                 throw new InvalidOperationException("No GameObject assigned to EnableTask.");
             }
 
-            gameObjectToEnable.SetActive(true);
+            if (!_hasStateBeforeRun)
+            {
+                _wasActiveBeforeRun = gameObjectToEnable.activeSelf;
+                _hasStateBeforeRun = true;
+            }
+
+            gameObjectToEnable.SetActive(SubtaskStateRules.ResolvesToOn(_state, gameObjectToEnable.activeSelf));
         }
     }
 }
