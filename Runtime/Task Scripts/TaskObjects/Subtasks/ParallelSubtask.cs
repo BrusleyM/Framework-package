@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Framework.Tasks
@@ -7,15 +8,27 @@ namespace Framework.Tasks
         [SerializeField]
         private GameObjectTask[] _subtasks = new GameObjectTask[0];
 
+        private readonly List<GameObjectTask> _runningSubtasks = new List<GameObjectTask>();
         private bool _isRunning;
 
         public override void Execute()
         {
             _isRunning = true;
+            CollectDistinctSubtasksInto(_runningSubtasks);
             PrepareAndListenToEverySubtask();
-            if (!CompleteWhenEverySubtaskIsComplete())
+            if (CompleteWhenEverySubtaskIsComplete())
+            {
+                return;
+            }
+
+            try
             {
                 ExecuteEverySubtask();
+            }
+            catch
+            {
+                Cancel();
+                throw;
             }
         }
 
@@ -23,33 +36,42 @@ namespace Framework.Tasks
         {
             _isRunning = false;
             StopListeningToEverySubtask();
+            var everySubtask = new List<GameObjectTask>();
+            CollectDistinctSubtasksInto(everySubtask);
+            foreach (var subtask in everySubtask)
+            {
+                subtask.Cancel();
+            }
+            _runningSubtasks.Clear();
+        }
+
+        private void CollectDistinctSubtasksInto(List<GameObjectTask> destination)
+        {
+            destination.Clear();
             foreach (var subtask in _subtasks)
             {
-                if (subtask != null)
+                if (subtask != null && !destination.Contains(subtask))
                 {
-                    subtask.Cancel();
+                    destination.Add(subtask);
                 }
             }
         }
 
         private void PrepareAndListenToEverySubtask()
         {
-            foreach (var subtask in _subtasks)
+            foreach (var subtask in _runningSubtasks)
             {
-                if (subtask != null)
-                {
-                    subtask.Prepare();
-                    subtask.Completed -= OnSubtaskCompleted;
-                    subtask.Completed += OnSubtaskCompleted;
-                }
+                subtask.Prepare();
+                subtask.Completed -= OnSubtaskCompleted;
+                subtask.Completed += OnSubtaskCompleted;
             }
         }
 
         private void ExecuteEverySubtask()
         {
-            foreach (var subtask in _subtasks)
+            foreach (var subtask in _runningSubtasks.ToArray())
             {
-                if (subtask != null && _isRunning)
+                if (_isRunning)
                 {
                     subtask.Execute();
                 }
@@ -58,12 +80,9 @@ namespace Framework.Tasks
 
         private void StopListeningToEverySubtask()
         {
-            foreach (var subtask in _subtasks)
+            foreach (var subtask in _runningSubtasks)
             {
-                if (subtask != null)
-                {
-                    subtask.Completed -= OnSubtaskCompleted;
-                }
+                subtask.Completed -= OnSubtaskCompleted;
             }
         }
 
@@ -79,9 +98,9 @@ namespace Framework.Tasks
                 return false;
             }
 
-            foreach (var subtask in _subtasks)
+            foreach (var subtask in _runningSubtasks)
             {
-                if (subtask != null && !subtask.IsComplete)
+                if (!subtask.IsComplete)
                 {
                     return false;
                 }

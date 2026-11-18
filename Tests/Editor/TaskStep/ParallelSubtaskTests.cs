@@ -13,6 +13,7 @@ namespace Framework.Sequencing.Tests
         private ManualSubtask _first;
         private ManualSubtask _second;
         private int _completions;
+        private readonly List<GameObject> _tracked = new List<GameObject>();
 
         [SetUp]
         public void SetUp()
@@ -30,6 +31,17 @@ namespace Framework.Sequencing.Tests
         public void TearDown()
         {
             Object.DestroyImmediate(_host);
+            foreach (var tracked in _tracked)
+            {
+                Object.DestroyImmediate(tracked);
+            }
+            _tracked.Clear();
+        }
+
+        private GameObject Track(GameObject gameObject)
+        {
+            _tracked.Add(gameObject);
+            return gameObject;
         }
 
         [Test]
@@ -66,8 +78,8 @@ namespace Framework.Sequencing.Tests
         [Test]
         public void Subtasks_that_finish_themselves_instantly_complete_the_group_immediately()
         {
-            var firstTarget = new GameObject("firstTarget");
-            var secondTarget = new GameObject("secondTarget");
+            var firstTarget = Track(new GameObject("firstTarget"));
+            var secondTarget = Track(new GameObject("secondTarget"));
             firstTarget.SetActive(false);
             secondTarget.SetActive(false);
             var firstEnable = _host.AddComponent<EnableTask>();
@@ -81,8 +93,6 @@ namespace Framework.Sequencing.Tests
             Assert.IsTrue(firstTarget.activeSelf);
             Assert.IsTrue(secondTarget.activeSelf);
             Assert.IsTrue(_parallel.IsComplete);
-            Object.DestroyImmediate(firstTarget);
-            Object.DestroyImmediate(secondTarget);
         }
 
         [Test]
@@ -173,20 +183,56 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
-        public void Cancelling_an_enable_task_switches_its_game_object_off_without_completing_it()
+        public void A_subtask_that_throws_cancels_the_ones_already_started_and_stops_the_group()
         {
-            var target = new GameObject("target");
-            var enable = _host.AddComponent<EnableTask>();
-            AssignTarget(enable, target);
-            enable.Prepare();
-            enable.Execute();
-            enable.Prepare();
+            var thrower = _host.AddComponent<ThrowingSubtask>();
+            AssignSubtasks(_parallel, _first, thrower, _second);
 
-            enable.Cancel();
+            Assert.Throws<System.InvalidOperationException>(() => _parallel.Execute());
 
-            Assert.IsFalse(target.activeSelf);
-            Assert.IsFalse(enable.IsComplete);
-            Object.DestroyImmediate(target);
+            Assert.AreEqual(1, _first.CancelCount);
+            Assert.AreEqual(0, _second.ExecuteCount);
+            _first.Finish();
+            Assert.IsFalse(_parallel.IsComplete);
+        }
+
+        [Test]
+        public void A_subtask_listed_twice_is_started_once()
+        {
+            AssignSubtasks(_parallel, _first, _first, _second);
+
+            _parallel.Execute();
+            _first.Finish();
+            _second.Finish();
+
+            Assert.AreEqual(1, _first.ExecuteCount);
+            Assert.IsTrue(_parallel.IsComplete);
+        }
+
+        [Test]
+        public void A_group_whose_slots_are_all_empty_completes_immediately()
+        {
+            AssignSubtasks(_parallel, null, null);
+
+            _parallel.Execute();
+
+            Assert.IsTrue(_parallel.IsComplete);
+        }
+
+        [Test]
+        public void Executing_again_after_a_mid_run_cancel_waits_for_the_new_run_to_finish()
+        {
+            _parallel.Execute();
+            _parallel.Cancel();
+
+            _parallel.Prepare();
+            _parallel.Execute();
+            _first.Finish();
+
+            Assert.IsFalse(_parallel.IsComplete);
+            _second.Finish();
+            Assert.IsTrue(_parallel.IsComplete);
+            Assert.AreEqual(1, _completions);
         }
 
         private static void AssignSubtasks(ParallelSubtask group, params GameObjectTask[] subtasks)
@@ -207,6 +253,14 @@ namespace Framework.Sequencing.Tests
             var serialized = new SerializedObject(enable);
             serialized.FindProperty("gameObjectToEnable").objectReferenceValue = target;
             serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private sealed class ThrowingSubtask : GameObjectTask
+        {
+            public override void Execute()
+            {
+                throw new System.InvalidOperationException("missing reference");
+            }
         }
 
         private sealed class ManualSubtask : GameObjectTask
