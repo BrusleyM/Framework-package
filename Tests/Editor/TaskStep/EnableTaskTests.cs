@@ -98,6 +98,57 @@ namespace Framework.Sequencing.Tests
             Assert.IsFalse(_target.activeSelf);
         }
 
+        [Test]
+        public void Cancelling_an_executed_enable_task_switches_its_game_object_off_without_completing_it()
+        {
+            _enableTask.Execute();
+            _enableTask.Prepare();
+
+            _enableTask.Cancel();
+
+            Assert.IsFalse(_target.activeSelf);
+            Assert.IsFalse(_enableTask.IsComplete);
+        }
+
+        [Test]
+        public void Cancelling_the_action_task_switches_off_an_enable_task_nested_in_a_parallel_group()
+        {
+            var group = ParallelGroupOf(_enableTask);
+            var action = ActionTaskRunning(group);
+            action.StartTask();
+            Assert.IsTrue(_target.activeSelf);
+
+            action.CancelTask();
+
+            Assert.IsFalse(_target.activeSelf);
+        }
+
+        [Test]
+        public void Skipping_the_action_task_switches_off_an_enable_task_nested_in_a_parallel_group()
+        {
+            var group = ParallelGroupOf(_enableTask);
+            var action = ActionTaskRunning(group);
+            action.StartTask();
+
+            action.Skip();
+
+            Assert.IsFalse(_target.activeSelf);
+        }
+
+        private ParallelSubtask ParallelGroupOf(params GameObjectTask[] subtasks)
+        {
+            var group = _host.AddComponent<ParallelSubtask>();
+            var serialized = new SerializedObject(group);
+            var property = serialized.FindProperty("_subtasks");
+            property.arraySize = subtasks.Length;
+            for (var index = 0; index < subtasks.Length; index++)
+            {
+                property.GetArrayElementAtIndex(index).objectReferenceValue = subtasks[index];
+            }
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return group;
+        }
+
         private ActionTask ActionTaskRunning(params GameObjectTask[] subTasks)
         {
             var action = _host.AddComponent<ActionTask>();
