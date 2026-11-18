@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-11-18
+
 ### Changed
 - Depends on the stable `com.vishnu.framework.core` 1.0.0 instead of 1.0.0-preview.1. Install core 1.0.0 before this package.
 
