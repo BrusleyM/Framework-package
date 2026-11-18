@@ -5,6 +5,9 @@
 ### Added
 - README section "Build a sequence in the editor" describing the drag and drop authoring path.
 
+### Fixed
+- Imported samples no longer warn that `EmissionControl.cs` and `MoveTo.cs` do not belong to an assembly definition. They now compile in `Framework.Samples.BaseModels`.
+
 ### Changed
 - `SequenceRunner.Advance` no longer allocates on a steady-state tick. Core tests now assert zero allocations and a time budget for a long running sequence.
 
