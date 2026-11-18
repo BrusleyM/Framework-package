@@ -202,6 +202,7 @@ namespace Framework.Sequencing.Tests
             outer.Execute();
 
             Assert.That(completions, Is.EqualTo(1));
+            Assert.That(inner.IsComplete, Is.True);
         }
 
         [Test]
