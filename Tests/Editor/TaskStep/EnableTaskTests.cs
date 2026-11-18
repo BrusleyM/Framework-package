@@ -42,13 +42,13 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
-        public void Disabling_after_executing_does_not_complete_the_task_a_second_time()
+        public void Cancelling_after_executing_does_not_complete_the_task_a_second_time()
         {
             var completions = 0;
             _enableTask.Completed += () => completions++;
             _enableTask.Execute();
 
-            _enableTask.DisableGameObject();
+            _enableTask.Cancel();
 
             Assert.IsFalse(_target.activeSelf);
             Assert.AreEqual(1, completions);

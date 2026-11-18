@@ -27,7 +27,11 @@ namespace Framework.Tasks
             }
             catch
             {
-                Cancel();
+                if (_isRunning)
+                {
+                    Cancel();
+                }
+
                 throw;
             }
         }
@@ -43,6 +47,42 @@ namespace Framework.Tasks
                 subtask.Cancel();
             }
             _runningSubtasks.Clear();
+        }
+
+        private void OnValidate()
+        {
+            for (var index = 0; index < _subtasks.Length; index++)
+            {
+                if (_subtasks[index] != null && ContainsThisGroup(_subtasks[index], new HashSet<GameObjectTask>()))
+                {
+                    Debug.LogError("A parallel subtask cannot contain itself, directly or through another group.", this);
+                    _subtasks[index] = null;
+                }
+            }
+        }
+
+        private bool ContainsThisGroup(GameObjectTask candidate, HashSet<GameObjectTask> visited)
+        {
+            if (candidate == this)
+            {
+                return true;
+            }
+
+            var group = candidate as ParallelSubtask;
+            if (group == null || !visited.Add(group))
+            {
+                return false;
+            }
+
+            foreach (var child in group._subtasks)
+            {
+                if (child != null && ContainsThisGroup(child, visited))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void CollectDistinctSubtasksInto(List<GameObjectTask> destination)

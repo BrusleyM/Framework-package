@@ -29,20 +29,6 @@ namespace Framework.Tasks
             _hasStateBeforeRun = false;
         }
 
-        public void DisableGameObject()
-        {
-            DeactivateGameObject();
-            MarkComplete();
-        }
-
-        private void DeactivateGameObject()
-        {
-            if (gameObjectToEnable != null)
-            {
-                gameObjectToEnable.SetActive(false);
-            }
-        }
-
         private void ApplyState()
         {
             if (gameObjectToEnable == null)
