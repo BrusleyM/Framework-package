@@ -30,9 +30,8 @@ namespace Framework.Tasks
             finally
             {
                 _isExecuting = false;
+                RaiseDeferredCompletion();
             }
-
-            RaiseDeferredCompletion();
         }
 
         private void ExecuteGroup()

@@ -43,10 +43,9 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
-        public void The_call_stack_stays_shallow_however_many_instant_subtasks_are_chained()
+        public void The_call_stack_does_not_grow_along_a_chain_of_instant_subtasks()
         {
-            InstantSubtask.DeepestStack = 0;
-            var subtasks = new GameObjectTask[400];
+            var subtasks = new InstantSubtask[400];
             for (var index = 0; index < subtasks.Length; index++)
             {
                 subtasks[index] = _host.AddComponent<InstantSubtask>();
@@ -55,7 +54,7 @@ namespace Framework.Sequencing.Tests
 
             action.StartTask();
 
-            Assert.That(InstantSubtask.DeepestStack, Is.LessThan(60));
+            Assert.That(subtasks[subtasks.Length - 1].FrameCountWhenExecuted - subtasks[0].FrameCountWhenExecuted, Is.LessThan(10));
         }
 
         [Test]
@@ -161,6 +160,89 @@ namespace Framework.Sequencing.Tests
             Assert.DoesNotThrow(() => outer.Cancel());
         }
 
+        [Test]
+        public void Restarting_the_action_task_from_inside_a_finishing_subtask_runs_the_list_again_without_growing_the_stack()
+        {
+            var action = _host.AddComponent<ActionTask>();
+            var first = _host.AddComponent<InstantSubtask>();
+            var second = _host.AddComponent<InstantSubtask>();
+            var firstRuns = 0;
+            var secondRuns = 0;
+            var restarted = false;
+            first.OnExecute = () => firstRuns++;
+            second.OnExecute = () => secondRuns++;
+            first.AfterCompleting = () =>
+            {
+                if (!restarted)
+                {
+                    restarted = true;
+                    action.StartTask();
+                }
+            };
+            AssignSubtasks(action, first, second);
+
+            action.StartTask();
+
+            Assert.That(firstRuns, Is.EqualTo(2));
+            Assert.That(secondRuns, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void A_group_nested_in_a_group_completes_the_outer_group_exactly_once()
+        {
+            var outer = _host.AddComponent<ParallelSubtask>();
+            var inner = _host.AddComponent<ParallelSubtask>();
+            var instant = _host.AddComponent<InstantSubtask>();
+            var other = _host.AddComponent<InstantSubtask>();
+            SetSubtasksWithoutValidation(inner, instant);
+            SetSubtasksWithoutValidation(outer, inner, other);
+            var completions = 0;
+            outer.Completed += () => completions++;
+
+            outer.Execute();
+
+            Assert.That(completions, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void A_group_with_no_subtasks_completes_immediately()
+        {
+            var group = _host.AddComponent<ParallelSubtask>();
+
+            group.Execute();
+
+            Assert.That(group.IsComplete, Is.True);
+        }
+
+        [Test]
+        public void A_group_with_a_subtask_that_finishes_later_completes_when_it_does()
+        {
+            var group = _host.AddComponent<ParallelSubtask>();
+            var slow = _host.AddComponent<ManualSubtask>();
+            SetSubtasksWithoutValidation(group, slow);
+            group.Execute();
+            Assert.That(group.IsComplete, Is.False);
+
+            slow.Finish();
+
+            Assert.That(group.IsComplete, Is.True);
+        }
+
+        [Test]
+        public void A_subtask_that_throws_after_completing_still_lets_its_group_report_completion()
+        {
+            var group = _host.AddComponent<ParallelSubtask>();
+            var child = _host.AddComponent<InstantSubtask>();
+            child.AfterCompleting = () => throw new System.InvalidOperationException("late failure");
+            SetSubtasksWithoutValidation(group, child);
+            var completions = 0;
+            group.Completed += () => completions++;
+
+            Assert.Throws<System.InvalidOperationException>(() => group.Execute());
+
+            Assert.That(completions, Is.EqualTo(1));
+        }
+
         private ActionTask ActionTaskWith(params GameObjectTask[] subtasks)
         {
             var action = _host.AddComponent<ActionTask>();
@@ -188,13 +270,13 @@ namespace Framework.Sequencing.Tests
 
         private sealed class InstantSubtask : GameObjectTask
         {
-            public static int DeepestStack { get; set; }
+            public int FrameCountWhenExecuted { get; private set; }
             public System.Action OnExecute { get; set; }
             public System.Action AfterCompleting { get; set; }
 
             public override void Execute()
             {
-                DeepestStack = System.Math.Max(DeepestStack, new System.Diagnostics.StackTrace().FrameCount);
+                FrameCountWhenExecuted = new System.Diagnostics.StackTrace().FrameCount;
                 OnExecute?.Invoke();
                 MarkComplete();
                 AfterCompleting?.Invoke();
