@@ -204,10 +204,6 @@ namespace Framework.Tasks
                 }
 
                 subTask.Cancel();
-                if (subTask is EnableTask enableTask)
-                {
-                    enableTask.DisableGameObject();
-                }
             }
         }
     }

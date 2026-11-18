@@ -14,14 +14,23 @@ namespace Framework.Tasks
             MarkComplete();
         }
 
+        public override void Cancel()
+        {
+            DeactivateGameObject();
+        }
+
         public void DisableGameObject()
+        {
+            DeactivateGameObject();
+            MarkComplete();
+        }
+
+        private void DeactivateGameObject()
         {
             if (gameObjectToEnable != null)
             {
                 gameObjectToEnable.SetActive(false);
             }
-
-            MarkComplete();
         }
 
         protected void EnableGameObject()
