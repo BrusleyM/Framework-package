@@ -26,6 +26,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Check out the core package
+        uses: actions/checkout@v4
+        with:
+          repository: BrusleyM/Framework-core
+          ref: v1.0.0-preview.1
+          path: .core
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -33,7 +39,7 @@ jobs:
         id: bump
         run: echo "version=$(python .github/scripts/release_tools.py prepare ${{ inputs.bump }})" >> "$GITHUB_OUTPUT"
       - name: Check the release is complete
-        run: python .github/scripts/check_package.py --release
+        run: python .github/scripts/check_package.py --release --dependency-root .core
       - name: Commit on a release branch and open the pull request into develop
         env:
           GH_TOKEN: ${{ github.token }}
