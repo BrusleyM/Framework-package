@@ -88,6 +88,7 @@ namespace Framework.Tasks
             StopReminder();
             StopListeningForAllCheckPointsChecked();
             DetachFromCurrentSubTask();
+            _advanceRequested = false;
         }
 
         private void LinkCheckPointsToThisTask()

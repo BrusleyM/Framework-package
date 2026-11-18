@@ -12,6 +12,7 @@ namespace Framework.Tasks
         private bool _isRunning;
         private bool _isExecuting;
         private bool _isCancelling;
+        private bool _completionPending;
 
         public override void Execute()
         {
@@ -30,11 +31,14 @@ namespace Framework.Tasks
             {
                 _isExecuting = false;
             }
+
+            RaiseDeferredCompletion();
         }
 
         private void ExecuteGroup()
         {
             _isRunning = true;
+            _completionPending = false;
             CollectDistinctSubtasksInto(_runningSubtasks);
             PrepareAndListenToEverySubtask();
             if (CompleteWhenEverySubtaskIsComplete())
@@ -75,9 +79,19 @@ namespace Framework.Tasks
             }
         }
 
+        private void RaiseDeferredCompletion()
+        {
+            if (_completionPending)
+            {
+                _completionPending = false;
+                MarkComplete();
+            }
+        }
+
         private void CancelGroup()
         {
             _isRunning = false;
+            _completionPending = false;
             StopListeningToEverySubtask();
             var everySubtask = new List<GameObjectTask>();
             CollectDistinctSubtasksInto(everySubtask);
@@ -187,7 +201,14 @@ namespace Framework.Tasks
 
             _isRunning = false;
             StopListeningToEverySubtask();
-            MarkComplete();
+            if (_isExecuting)
+            {
+                _completionPending = true;
+            }
+            else
+            {
+                MarkComplete();
+            }
             return true;
         }
     }

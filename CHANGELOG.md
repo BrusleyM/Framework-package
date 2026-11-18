@@ -3,8 +3,8 @@
 ## [Unreleased]
 
 ### Fixed
-- A long run of subtasks that finish instantly no longer grows the call stack: the action task starts the next listed subtask in a loop instead of from inside the previous one's completion event, so thousands of instant subtasks cannot overflow it. Empty slots are skipped in the same loop.
-- A parallel subtask that ends up containing itself, directly or through another group, logs an error and refuses to run or cancel again instead of recursing without end. The inspector already rejects such a slot; this covers lists set from code.
+- A long run of subtasks that finish instantly no longer grows the call stack: the action task starts the next listed subtask in a loop instead of from inside the previous one's completion event, so thousands of instant subtasks cannot overflow it. Empty slots are skipped in the same loop. The next subtask now starts after the previous one's `Execute` returns, not from inside its completion event, and cancelling or skipping the task while that subtask is finishing no longer lets the next one start.
+- A parallel subtask that ends up containing itself, directly or through another group, logs an error and refuses a nested execute, and ignores a nested cancel, instead of recursing without end. The inspector already rejects such a slot; this covers lists set from code. A group's completed listeners now run after its children have finished executing, so a listener may execute the group again.
 
 ## [3.1.0] - 2026-11-18
 

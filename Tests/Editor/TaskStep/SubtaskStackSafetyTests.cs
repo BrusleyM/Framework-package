@@ -43,16 +43,85 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
-        public void Empty_slots_between_instant_subtasks_are_skipped_in_order()
+        public void The_call_stack_stays_shallow_however_many_instant_subtasks_are_chained()
         {
+            InstantSubtask.DeepestStack = 0;
+            var subtasks = new GameObjectTask[400];
+            for (var index = 0; index < subtasks.Length; index++)
+            {
+                subtasks[index] = _host.AddComponent<InstantSubtask>();
+            }
+            var action = ActionTaskWith(subtasks);
+
+            action.StartTask();
+
+            Assert.That(InstantSubtask.DeepestStack, Is.LessThan(60));
+        }
+
+        [Test]
+        public void Empty_slots_between_instant_subtasks_are_skipped_and_the_rest_run_in_the_listed_order()
+        {
+            var order = new System.Collections.Generic.List<string>();
             var first = _host.AddComponent<InstantSubtask>();
             var second = _host.AddComponent<InstantSubtask>();
+            first.OnExecute = () => order.Add("first");
+            second.OnExecute = () => order.Add("second");
             var action = ActionTaskWith(first, null, null, second);
 
             action.StartTask();
 
-            Assert.That(first.IsComplete, Is.True);
-            Assert.That(second.IsComplete, Is.True);
+            CollectionAssert.AreEqual(new[] { "first", "second" }, order);
+        }
+
+        [Test]
+        public void Cancelling_the_action_task_while_an_instant_subtask_is_finishing_does_not_start_the_next_one()
+        {
+            var action = _host.AddComponent<ActionTask>();
+            var cancelling = _host.AddComponent<InstantSubtask>();
+            var next = _host.AddComponent<InstantSubtask>();
+            var nextRan = false;
+            cancelling.AfterCompleting = action.CancelTask;
+            next.OnExecute = () => nextRan = true;
+            AssignSubtasks(action, cancelling, next);
+
+            action.StartTask();
+
+            Assert.That(nextRan, Is.False);
+        }
+
+        [Test]
+        public void An_action_task_whose_subtask_throws_can_be_started_again()
+        {
+            var thrower = _host.AddComponent<ThrowingSubtask>();
+            var action = ActionTaskWith(thrower);
+            Assert.Throws<System.InvalidOperationException>(() => action.StartTask());
+
+            Assert.Throws<System.InvalidOperationException>(() => action.StartTask());
+        }
+
+        [Test]
+        public void A_group_may_be_executed_again_from_a_completed_listener_without_a_false_cycle_error()
+        {
+            var group = _host.AddComponent<ParallelSubtask>();
+            var child = _host.AddComponent<InstantSubtask>();
+            SetSubtasksWithoutValidation(group, child);
+            var executions = 0;
+            child.OnExecute = () => executions++;
+            var restarted = false;
+            group.Completed += () =>
+            {
+                if (!restarted)
+                {
+                    restarted = true;
+                    group.Prepare();
+                    group.Execute();
+                }
+            };
+
+            group.Execute();
+
+            Assert.That(executions, Is.EqualTo(2));
+            Assert.That(group.IsComplete, Is.True);
         }
 
         [Test]
@@ -95,6 +164,12 @@ namespace Framework.Sequencing.Tests
         private ActionTask ActionTaskWith(params GameObjectTask[] subtasks)
         {
             var action = _host.AddComponent<ActionTask>();
+            AssignSubtasks(action, subtasks);
+            return action;
+        }
+
+        private static void AssignSubtasks(ActionTask action, params GameObjectTask[] subtasks)
+        {
             var serialized = new SerializedObject(action);
             var property = serialized.FindProperty("_subTasks");
             property.arraySize = subtasks.Length;
@@ -103,7 +178,6 @@ namespace Framework.Sequencing.Tests
                 property.GetArrayElementAtIndex(index).objectReferenceValue = subtasks[index];
             }
             serialized.ApplyModifiedPropertiesWithoutUndo();
-            return action;
         }
 
         private static void SetSubtasksWithoutValidation(ParallelSubtask group, params GameObjectTask[] subtasks)
@@ -114,9 +188,24 @@ namespace Framework.Sequencing.Tests
 
         private sealed class InstantSubtask : GameObjectTask
         {
+            public static int DeepestStack { get; set; }
+            public System.Action OnExecute { get; set; }
+            public System.Action AfterCompleting { get; set; }
+
             public override void Execute()
             {
+                DeepestStack = System.Math.Max(DeepestStack, new System.Diagnostics.StackTrace().FrameCount);
+                OnExecute?.Invoke();
                 MarkComplete();
+                AfterCompleting?.Invoke();
+            }
+        }
+
+        private sealed class ThrowingSubtask : GameObjectTask
+        {
+            public override void Execute()
+            {
+                throw new System.InvalidOperationException("missing reference");
             }
         }
 
