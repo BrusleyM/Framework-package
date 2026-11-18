@@ -123,14 +123,14 @@ jobs:
           projectPath: .host
           unityVersion: ${{ matrix.unity }}
           testMode: all
-          artifactsPath: test-results
+          artifactsPath: test-results~
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: Unity ${{ matrix.name }} test results
       - name: Fail unless tests ran and none failed
-        run: python .github/scripts/check_test_results.py test-results
+        run: python .github/scripts/check_test_results.py test-results~
       - name: Keep the test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.unity }}-${{ matrix.interactionToolkit }}
-          path: test-results
+          path: test-results~
