@@ -273,6 +273,19 @@ namespace Framework.Sequencing.Tests
             Assert.IsTrue(_parallel.IsComplete);
         }
 
+        [Test]
+        public void Cancelling_cancels_the_subtasks_from_the_last_listed_to_the_first()
+        {
+            var journal = new List<string>();
+            _first.OnCancel = () => journal.Add("first");
+            _second.OnCancel = () => journal.Add("second");
+            _parallel.Execute();
+
+            _parallel.Cancel();
+
+            CollectionAssert.AreEqual(new[] { "second", "first" }, journal);
+        }
+
         private static int SubtaskCountOf(ParallelSubtask group)
         {
             var serialized = new SerializedObject(group);
@@ -322,6 +335,7 @@ namespace Framework.Sequencing.Tests
             public int ExecuteCount { get; private set; }
             public int CancelCount { get; private set; }
             public System.Action OnExecute { get; set; }
+            public System.Action OnCancel { get; set; }
 
             public override void Execute()
             {
@@ -332,6 +346,7 @@ namespace Framework.Sequencing.Tests
             public override void Cancel()
             {
                 CancelCount++;
+                OnCancel?.Invoke();
             }
 
             public void Finish()
