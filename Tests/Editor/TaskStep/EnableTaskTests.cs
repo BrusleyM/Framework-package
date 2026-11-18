@@ -205,6 +205,54 @@ namespace Framework.Sequencing.Tests
             Assert.IsTrue(_target.activeSelf);
         }
 
+        [Test]
+        public void Cancelling_an_enable_task_set_to_off_puts_the_game_object_back_on()
+        {
+            _target.SetActive(true);
+            AssignState(SubtaskState.Off);
+            _enableTask.Execute();
+
+            _enableTask.Cancel();
+
+            Assert.IsTrue(_target.activeSelf);
+        }
+
+        [Test]
+        public void Cancelling_an_enable_task_that_never_ran_leaves_the_game_object_alone()
+        {
+            _target.SetActive(true);
+
+            _enableTask.Cancel();
+
+            Assert.IsTrue(_target.activeSelf);
+        }
+
+        [Test]
+        public void Running_a_toggle_enable_task_twice_before_cancelling_restores_the_original_state()
+        {
+            AssignState(SubtaskState.Toggle);
+            _enableTask.Execute();
+            _enableTask.Prepare();
+            _enableTask.Execute();
+
+            _enableTask.Cancel();
+
+            Assert.IsFalse(_target.activeSelf);
+        }
+
+        [Test]
+        public void A_toggle_enable_task_flips_the_game_object_again_after_a_cancel()
+        {
+            AssignState(SubtaskState.Toggle);
+            _enableTask.Execute();
+            _enableTask.Cancel();
+            _enableTask.Prepare();
+
+            _enableTask.Execute();
+
+            Assert.IsTrue(_target.activeSelf);
+        }
+
         private void AssignState(SubtaskState state)
         {
             var serialized = new SerializedObject(_enableTask);

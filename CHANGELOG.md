@@ -4,12 +4,10 @@
 
 ### Added
 - `EnableTask` and `SimultaneousHighlightTask` have a state field: On (default, same behavior as before), Off, or Toggle. A toggle flips from whatever the object currently is, so prefer On or Off unless a flip is what you want.
-
-### Added
 - `ParallelSubtask`: a subtask that holds a list of other subtasks, starts them all at once and completes when every one of them has completed. Put it in an action task's subtask list to run, for example, a highlight and an enable together while the rest of the list still runs in order.
 
 ### Changed
-- `EnableTask.Cancel` now switches its game object off, so subtasks nested in a `ParallelSubtask` are reset the same way as listed ones. The action task no longer special-cases `EnableTask` when it tears down.
+- `EnableTask.Cancel` puts its game object back to the state it had before the task ran (nothing happens if the task never ran), so subtasks nested in a `ParallelSubtask` are reset the same way as listed ones, whatever their state. The action task no longer special-cases `EnableTask` when it tears down.
 
 ## [3.0.1] - 2026-11-18
 
