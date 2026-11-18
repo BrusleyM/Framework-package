@@ -3,6 +3,9 @@
 ## [Unreleased]
 
 ### Added
+- `EnableTask` and `SimultaneousHighlightTask` have a state field: On (default, same behavior as before), Off, or Toggle. A toggle flips from whatever the object currently is, so prefer On or Off unless a flip is what you want.
+
+### Added
 - `ParallelSubtask`: a subtask that holds a list of other subtasks, starts them all at once and completes when every one of them has completed. Put it in an action task's subtask list to run, for example, a highlight and an enable together while the rest of the list still runs in order.
 
 ### Changed

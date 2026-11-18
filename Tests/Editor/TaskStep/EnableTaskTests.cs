@@ -120,6 +120,47 @@ namespace Framework.Sequencing.Tests
             return probe;
         }
 
+        [Test]
+        public void Executing_with_the_off_state_disables_the_game_object_and_completes_the_task()
+        {
+            _target.SetActive(true);
+            AssignState(SubtaskState.Off);
+
+            _enableTask.Execute();
+
+            Assert.IsFalse(_target.activeSelf);
+            Assert.IsTrue(_enableTask.IsComplete);
+        }
+
+        [Test]
+        public void Executing_with_the_toggle_state_flips_the_game_object_each_time()
+        {
+            AssignState(SubtaskState.Toggle);
+
+            _enableTask.Execute();
+            var activeAfterFirst = _target.activeSelf;
+            _enableTask.Prepare();
+            _enableTask.Execute();
+
+            Assert.IsTrue(activeAfterFirst);
+            Assert.IsFalse(_target.activeSelf);
+        }
+
+        [Test]
+        public void A_new_enable_task_defaults_to_the_on_state()
+        {
+            _enableTask.Execute();
+
+            Assert.IsTrue(_target.activeSelf);
+        }
+
+        private void AssignState(SubtaskState state)
+        {
+            var serialized = new SerializedObject(_enableTask);
+            serialized.FindProperty("_state").enumValueIndex = (int)state;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private static void Assign(Object owner, string field, Object value)
         {
             var serialized = new SerializedObject(owner);

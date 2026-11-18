@@ -7,10 +7,12 @@ namespace Framework.Tasks
     {
         [SerializeField]
         private GameObject gameObjectToEnable;
+        [SerializeField]
+        private SubtaskState _state = SubtaskState.On;
 
         public override void Execute()
         {
-            EnableGameObject();
+            ApplyState();
             MarkComplete();
         }
 
@@ -33,14 +35,14 @@ namespace Framework.Tasks
             }
         }
 
-        protected void EnableGameObject()
+        private void ApplyState()
         {
             if (gameObjectToEnable == null)
             {
                 throw new InvalidOperationException("No GameObject assigned to EnableTask.");
             }
 
-            gameObjectToEnable.SetActive(true);
+            gameObjectToEnable.SetActive(SubtaskStateRules.ResolvesToOn(_state, gameObjectToEnable.activeSelf));
         }
     }
 }
