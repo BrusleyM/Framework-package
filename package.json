@@ -1,6 +1,6 @@
 {
     "name": "com.vishnu.framework.sequencer",
-    "version": "3.0.0",
+    "version": "3.0.1",
     "displayName": "Framework Sequencer",
     "description": "A reusable sequencing framework for Unity: a pure C# sequence runner, event-driven step conditions and a thin Unity layer for guided flows such as tutorials.",
     "unity": "2022.3",
