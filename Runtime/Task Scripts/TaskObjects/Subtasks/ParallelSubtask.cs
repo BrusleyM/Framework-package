@@ -10,8 +10,29 @@ namespace Framework.Tasks
 
         private readonly List<GameObjectTask> _runningSubtasks = new List<GameObjectTask>();
         private bool _isRunning;
+        private bool _isExecuting;
+        private bool _isCancelling;
 
         public override void Execute()
+        {
+            if (_isExecuting)
+            {
+                Debug.LogError($"{name} is already executing, so a parallel subtask cannot contain itself.", this);
+                return;
+            }
+
+            _isExecuting = true;
+            try
+            {
+                ExecuteGroup();
+            }
+            finally
+            {
+                _isExecuting = false;
+            }
+        }
+
+        private void ExecuteGroup()
         {
             _isRunning = true;
             CollectDistinctSubtasksInto(_runningSubtasks);
@@ -37,6 +58,24 @@ namespace Framework.Tasks
         }
 
         public override void Cancel()
+        {
+            if (_isCancelling)
+            {
+                return;
+            }
+
+            _isCancelling = true;
+            try
+            {
+                CancelGroup();
+            }
+            finally
+            {
+                _isCancelling = false;
+            }
+        }
+
+        private void CancelGroup()
         {
             _isRunning = false;
             StopListeningToEverySubtask();

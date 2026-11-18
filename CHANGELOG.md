@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+- A long run of subtasks that finish instantly no longer grows the call stack: the action task starts the next listed subtask in a loop instead of from inside the previous one's completion event, so thousands of instant subtasks cannot overflow it. Empty slots are skipped in the same loop.
+- A parallel subtask that ends up containing itself, directly or through another group, logs an error and refuses to run or cancel again instead of recursing without end. The inspector already rejects such a slot; this covers lists set from code.
+
 ## [3.1.0] - 2026-11-18
 
 ### Added
