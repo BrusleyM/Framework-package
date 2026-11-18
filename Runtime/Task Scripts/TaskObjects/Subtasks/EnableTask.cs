@@ -16,17 +16,6 @@ namespace Framework.Tasks
 
         public override void Cancel()
         {
-            DeactivateGameObject();
-        }
-
-        public void DisableGameObject()
-        {
-            DeactivateGameObject();
-            MarkComplete();
-        }
-
-        private void DeactivateGameObject()
-        {
             if (gameObjectToEnable != null)
             {
                 gameObjectToEnable.SetActive(false);

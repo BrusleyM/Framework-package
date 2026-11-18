@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Framework.Tasks;
 using NUnit.Framework;
+using UnityEngine.TestTools;
 using UnityEditor;
 using UnityEngine;
 
@@ -233,6 +234,59 @@ namespace Framework.Sequencing.Tests
             _second.Finish();
             Assert.IsTrue(_parallel.IsComplete);
             Assert.AreEqual(1, _completions);
+        }
+
+        [Test]
+        public void A_group_cannot_be_given_itself_as_a_subtask()
+        {
+            LogAssert.Expect(UnityEngine.LogType.Error, new System.Text.RegularExpressions.Regex("cannot contain itself"));
+
+            AssignSubtasks(_parallel, _parallel, _first);
+
+            Assert.IsFalse(_parallel.IsComplete);
+            Assert.AreEqual(1, SubtaskCountOf(_parallel));
+        }
+
+        [Test]
+        public void A_group_cannot_contain_a_group_that_contains_it()
+        {
+            var inner = _host.AddComponent<ParallelSubtask>();
+            AssignSubtasks(inner, _parallel);
+            LogAssert.Expect(UnityEngine.LogType.Error, new System.Text.RegularExpressions.Regex("cannot contain itself"));
+
+            AssignSubtasks(_parallel, inner);
+
+            Assert.AreEqual(0, SubtaskCountOf(_parallel));
+        }
+
+        [Test]
+        public void A_throw_after_the_group_already_completed_does_not_cancel_its_children()
+        {
+            var thrower = _host.AddComponent<ThrowingSubtask>();
+            AssignSubtasks(_parallel, _first);
+            _parallel.Completed += () => thrower.Execute();
+            _first.OnExecute = () => _first.Finish();
+
+            Assert.Throws<System.InvalidOperationException>(() => _parallel.Execute());
+
+            Assert.AreEqual(0, _first.CancelCount);
+            Assert.IsTrue(_parallel.IsComplete);
+        }
+
+        private static int SubtaskCountOf(ParallelSubtask group)
+        {
+            var serialized = new SerializedObject(group);
+            var count = 0;
+            var list = serialized.FindProperty("_subtasks");
+            for (var index = 0; index < list.arraySize; index++)
+            {
+                if (list.GetArrayElementAtIndex(index).objectReferenceValue != null)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private static void AssignSubtasks(ParallelSubtask group, params GameObjectTask[] subtasks)
