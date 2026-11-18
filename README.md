@@ -127,7 +127,10 @@ Call `Finish()` from any event handler to complete the step, or `Fail(exception)
 
 ## Installation
 
-Add `https://github.com/BrusleyM/Framework-package.git#develop` in Package Manager once the 2.0 work is merged to `develop`. Before that, use the name of the branch you want after `#`, and a `#2.0.0-preview.1` tag once it is released.
+Install core first, then the sequencer, both by git URL in Package Manager. Unity does not resolve git-URL dependencies, so installing the sequencer alone fails with `Package [com.vishnu.framework.core@1.0.0-preview.1] cannot be found`.
+
+1. `https://github.com/BrusleyM/Framework-core.git#v1.0.0-preview.1`
+2. `https://github.com/BrusleyM/Framework-package.git#develop`, or a release tag once one is published.
 
 ## Tests
 
