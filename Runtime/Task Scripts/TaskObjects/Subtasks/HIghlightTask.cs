@@ -54,10 +54,15 @@ namespace Framework.Tasks
 
             foreach (var highlighted in gameObjectsToHighlight)
             {
-                FindOutline(highlighted).EnableOutline();
+                ApplyHighlight(FindOutline(highlighted));
             }
 
             MarkComplete();
+        }
+
+        protected virtual void ApplyHighlight(Outline outline)
+        {
+            outline.EnableOutline();
         }
 
         protected static Outline FindOutline(GameObject highlighted)

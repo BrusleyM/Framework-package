@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Added
+- `EnableTask` and `SimultaneousHighlightTask` have a state field: On (default, same behavior as before), Off, or Toggle. A toggle flips from whatever the object currently is (on a highlight task, each object flips on its own), so prefer On or Off unless a flip is what you want.
+- `ParallelSubtask`: a subtask that holds a list of other subtasks, starts them all at once and completes when every one of them has completed. A slot that would make a group contain itself, directly or through another group, is cleared with an error. Put it in an action task's subtask list to run, for example, a highlight and an enable together while the rest of the list still runs in order.
+
+### Changed
+- `SimultaneousHighlightTask.Cancel` puts each outline back to the state it had before the task ran (nothing happens if the task never ran), the same as `EnableTask.Cancel`.
+- `EnableTask.Cancel` puts its game object back to the state it had before the task ran (nothing happens if the task never ran), so subtasks nested in a `ParallelSubtask` are reset the same way as listed ones, whatever their state. The action task no longer special-cases `EnableTask` when it tears down.
+- The action task and `ParallelSubtask` cancel their subtasks from the last listed to the first, so an object touched by more than one subtask is restored correctly.
+
+### Deprecated
+- `EnableTask.DisableGameObject`: use `Cancel`, which restores the state the object had before the task ran instead of forcing it off, and does not complete the task. `DisableGameObject` still switches the object off and completes the task, and will be removed in the next major release.
+
 ## [3.0.1] - 2026-11-18
 
 ### Changed

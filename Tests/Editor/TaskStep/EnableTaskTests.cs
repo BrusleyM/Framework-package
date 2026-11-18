@@ -42,13 +42,13 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
-        public void Disabling_after_executing_does_not_complete_the_task_a_second_time()
+        public void Cancelling_after_executing_does_not_complete_the_task_a_second_time()
         {
             var completions = 0;
             _enableTask.Completed += () => completions++;
             _enableTask.Execute();
 
-            _enableTask.DisableGameObject();
+            _enableTask.Cancel();
 
             Assert.IsFalse(_target.activeSelf);
             Assert.AreEqual(1, completions);
@@ -98,6 +98,184 @@ namespace Framework.Sequencing.Tests
             Assert.IsFalse(_target.activeSelf);
         }
 
+        [Test]
+        public void Cancelling_an_executed_enable_task_switches_its_game_object_off_without_completing_it()
+        {
+            _enableTask.Execute();
+            _enableTask.Prepare();
+
+            _enableTask.Cancel();
+
+            Assert.IsFalse(_target.activeSelf);
+            Assert.IsFalse(_enableTask.IsComplete);
+        }
+
+        [Test]
+        public void Cancelling_the_action_task_switches_off_an_enable_task_nested_in_a_parallel_group()
+        {
+            var group = ParallelGroupOf(_enableTask);
+            var action = ActionTaskRunning(group);
+            action.StartTask();
+            Assert.IsTrue(_target.activeSelf);
+
+            action.CancelTask();
+
+            Assert.IsFalse(_target.activeSelf);
+        }
+
+        [Test]
+        public void Skipping_the_action_task_switches_off_an_enable_task_nested_in_a_parallel_group()
+        {
+            var group = ParallelGroupOf(_enableTask);
+            var action = ActionTaskRunning(group);
+            action.StartTask();
+
+            action.Skip();
+
+            Assert.IsFalse(_target.activeSelf);
+        }
+
+        [Test]
+        public void The_obsolete_disable_method_still_switches_the_game_object_off_and_completes_the_task()
+        {
+            _enableTask.Execute();
+            _enableTask.Prepare();
+
+#pragma warning disable CS0618
+            _enableTask.DisableGameObject();
+#pragma warning restore CS0618
+
+            Assert.IsFalse(_target.activeSelf);
+            Assert.IsTrue(_enableTask.IsComplete);
+        }
+
+        [Test]
+        public void Tearing_down_two_enable_tasks_on_the_same_object_restores_the_state_it_had_before_either_ran()
+        {
+            _target.SetActive(false);
+            var second = _host.AddComponent<EnableTask>();
+            Assign(second, "gameObjectToEnable", _target);
+            AssignState(second, SubtaskState.Off);
+            var action = ActionTaskRunning(_enableTask, second);
+            action.StartTask();
+            Assert.IsFalse(_target.activeSelf);
+
+            action.CancelTask();
+
+            Assert.IsFalse(_target.activeSelf);
+        }
+
+        [Test]
+        public void Executing_with_the_off_state_disables_the_game_object_and_completes_the_task()
+        {
+            _target.SetActive(true);
+            AssignState(_enableTask, SubtaskState.Off);
+
+            _enableTask.Execute();
+
+            Assert.IsFalse(_target.activeSelf);
+            Assert.IsTrue(_enableTask.IsComplete);
+        }
+
+        [Test]
+        public void Executing_with_the_toggle_state_flips_the_game_object_each_time()
+        {
+            AssignState(_enableTask, SubtaskState.Toggle);
+
+            _enableTask.Execute();
+            var activeAfterFirst = _target.activeSelf;
+            _enableTask.Prepare();
+            _enableTask.Execute();
+
+            Assert.IsTrue(activeAfterFirst);
+            Assert.IsFalse(_target.activeSelf);
+        }
+
+        [Test]
+        public void A_new_enable_task_defaults_to_the_on_state()
+        {
+            _enableTask.Execute();
+
+            Assert.IsTrue(_target.activeSelf);
+        }
+
+        [Test]
+        public void Cancelling_an_enable_task_set_to_off_puts_the_game_object_back_on()
+        {
+            _target.SetActive(true);
+            AssignState(_enableTask, SubtaskState.Off);
+            _enableTask.Execute();
+
+            _enableTask.Cancel();
+
+            Assert.IsTrue(_target.activeSelf);
+        }
+
+        [Test]
+        public void Cancelling_an_enable_task_that_never_ran_leaves_the_game_object_alone()
+        {
+            _target.SetActive(true);
+
+            _enableTask.Cancel();
+
+            Assert.IsTrue(_target.activeSelf);
+        }
+
+        [Test]
+        public void Running_a_toggle_enable_task_twice_before_cancelling_restores_the_original_state()
+        {
+            AssignState(_enableTask, SubtaskState.Toggle);
+            _enableTask.Execute();
+            _enableTask.Prepare();
+            _enableTask.Execute();
+
+            _enableTask.Cancel();
+
+            Assert.IsFalse(_target.activeSelf);
+        }
+
+        [Test]
+        public void A_toggle_enable_task_flips_the_game_object_again_after_a_cancel()
+        {
+            AssignState(_enableTask, SubtaskState.Toggle);
+            _enableTask.Execute();
+            _enableTask.Cancel();
+            _enableTask.Prepare();
+
+            _enableTask.Execute();
+
+            Assert.IsTrue(_target.activeSelf);
+        }
+
+        [Test]
+        public void Cancelling_a_parallel_group_of_two_enable_tasks_on_the_same_object_restores_the_original_state()
+        {
+            var second = _host.AddComponent<EnableTask>();
+            Assign(second, "gameObjectToEnable", _target);
+            AssignState(second, SubtaskState.Off);
+            var group = ParallelGroupOf(_enableTask, second);
+            group.Execute();
+            Assert.IsFalse(_target.activeSelf);
+
+            group.Cancel();
+
+            Assert.IsFalse(_target.activeSelf);
+        }
+
+        private ParallelSubtask ParallelGroupOf(params GameObjectTask[] subtasks)
+        {
+            var group = _host.AddComponent<ParallelSubtask>();
+            var serialized = new SerializedObject(group);
+            var property = serialized.FindProperty("_subtasks");
+            property.arraySize = subtasks.Length;
+            for (var index = 0; index < subtasks.Length; index++)
+            {
+                property.GetArrayElementAtIndex(index).objectReferenceValue = subtasks[index];
+            }
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            return group;
+        }
+
         private ActionTask ActionTaskRunning(params GameObjectTask[] subTasks)
         {
             var action = _host.AddComponent<ActionTask>();
@@ -118,6 +296,13 @@ namespace Framework.Sequencing.Tests
             probe.Label = label;
             probe.Journal = journal;
             return probe;
+        }
+
+        private static void AssignState(EnableTask task, SubtaskState state)
+        {
+            var serialized = new SerializedObject(task);
+            serialized.FindProperty("_state").enumValueIndex = (int)state;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void Assign(Object owner, string field, Object value)

@@ -93,7 +93,7 @@ A condition implements `IStepCondition`: it is armed when the step starts and di
 No code is needed to author a sequence. Everything is a component you add and wire in the Inspector.
 
 1. Add a `SequentialTask` to a GameObject and assign an `AudioSource` for narration.
-2. Create a child GameObject for each step and add a `Task` component to it: `AudioTask` plays a clip, `ActionTask` combines narration, reminders, sub tasks and check points, and `WaitForConditionTask` waits for any condition component such as `SignalCondition` or `ColliderContactCondition`.
+2. Create a child GameObject for each step and add a `Task` component to it: `AudioTask` plays a clip, `ActionTask` combines narration, reminders, sub tasks and check points (sub tasks run one after another; put them in a `ParallelSubtask` to run them at the same time), and `WaitForConditionTask` waits for any condition component such as `SignalCondition` or `ColliderContactCondition`.
 3. Drag the task objects into the `Task List` field of the `SequentialTask`, in the order they should run. Reorder them by dragging the handle beside each element.
 4. For a sequence in named stages, add a `TaskStage` component to a GameObject, set its name and list its tasks, then drag the stage objects into the `Stages` field. When `Stages` is not empty, the stages run and the `Task List` is ignored.
 5. Call `Run()` from a `UnityEvent` (a button, a trigger or a hand pose event) or from code.
