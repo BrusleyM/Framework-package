@@ -130,7 +130,7 @@ Call `Finish()` from any event handler to complete the step, or `Fail(exception)
 Install core first, then the sequencer, both by git URL in Package Manager. Unity does not resolve git-URL dependencies, so installing the sequencer alone fails with `Package [com.vishnu.framework.core@1.0.0] cannot be found`.
 
 1. `https://github.com/BrusleyM/Framework-core.git#v1.0.0`
-2. `https://github.com/BrusleyM/Framework-package.git#v3.0.0`
+2. `https://github.com/BrusleyM/Framework-package.git#v3.0.1`
 
 ## Tests
 
