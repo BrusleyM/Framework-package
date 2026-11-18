@@ -3,30 +3,36 @@ import json
 import os
 import pathlib
 
-PACKAGE_NAME = "com.vishnu.framework"
+PACKAGE_NAME = "com.vishnu.framework.sequencer"
 INTERACTION_TOOLKIT = "com.unity.xr.interaction.toolkit"
 
 
-def build_manifest(package_path, urp_version, test_framework_version, interaction_toolkit_version=None):
+def build_manifest(package_path, urp_version, test_framework_version, interaction_toolkit_version=None, local_dependencies=None):
     dependencies = {
         PACKAGE_NAME: f"file:{package_path}",
         "com.unity.render-pipelines.universal": urp_version,
         "com.unity.test-framework": test_framework_version,
     }
+    for name, path in (local_dependencies or {}).items():
+        dependencies[name] = f"file:{path}"
     if interaction_toolkit_version:
         dependencies[INTERACTION_TOOLKIT] = interaction_toolkit_version
     return {"dependencies": dependencies, "testables": [PACKAGE_NAME]}
 
 
 def create_host_project(project_path, package_root, unity_version, urp_version, test_framework_version,
-                        interaction_toolkit_version=None):
+                        interaction_toolkit_version=None, dependency_roots=None):
     packages_folder = project_path / "Packages"
     settings_folder = project_path / "ProjectSettings"
     (project_path / "Assets").mkdir(parents=True, exist_ok=True)
     packages_folder.mkdir(parents=True, exist_ok=True)
     settings_folder.mkdir(parents=True, exist_ok=True)
     package_path = pathlib.PurePosixPath(os.path.relpath(package_root, packages_folder))
-    manifest = build_manifest(package_path, urp_version, test_framework_version, interaction_toolkit_version)
+    local_dependencies = {
+        name: pathlib.PurePosixPath(os.path.relpath(root, packages_folder))
+        for name, root in (dependency_roots or {}).items()
+    }
+    manifest = build_manifest(package_path, urp_version, test_framework_version, interaction_toolkit_version, local_dependencies)
     (packages_folder / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     (settings_folder / "ProjectVersion.txt").write_text(f"m_EditorVersion: {unity_version}\n")
 
@@ -39,7 +45,9 @@ def main():
     parser.add_argument("--urp", required=True)
     parser.add_argument("--test-framework", required=True)
     parser.add_argument("--xr-interaction-toolkit")
+    parser.add_argument("--dependency", action="append", default=[], metavar="NAME=PATH")
     arguments = parser.parse_args()
+    dependency_roots = {name: pathlib.Path(path).resolve() for name, path in (item.split("=", 1) for item in arguments.dependency)}
     create_host_project(
         arguments.project_path,
         arguments.package_root,
@@ -47,6 +55,7 @@ def main():
         arguments.urp,
         arguments.test_framework,
         arguments.xr_interaction_toolkit,
+        dependency_roots,
     )
     print(f"Host project created at {arguments.project_path}")
 

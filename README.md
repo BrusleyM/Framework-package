@@ -10,8 +10,8 @@ A reusable sequencing framework for Unity. Tell a guided flow, such as a tutoria
 | `Framework.Sequencing.Unity` | Core, Tasks, Audio | `SequentialTask` runner component, `TaskStep`, signal and collider conditions, `WaitForConditionTask` |
 | `Framework.Sequencing.Unity.Editor` | Core, Unity | Editor only. The `SequentialTask` inspector: previous, current and next stage and step, and developer controls. |
 | `Framework.Sequencing.Xr` | Core, XR Interaction Toolkit 3.x | `InteractableCondition`. Compiles only when XRI 3.x is installed (version define `FRAMEWORK_XR_INTERACTION_TOOLKIT`). |
-| `Framework.Tasks` | Audio, CheckPoints, Outline | Scene-authored `Task` components |
-| `Framework.Outline`, `Framework.Audio`, `Framework.CheckPoints`, `Framework.Tools` | | Supporting tools. `Outline` and `Tools` reach `Framework.Sequencing.Unity` only through `Framework.Tasks`. |
+| `Framework.Tasks` | Audio, and `Framework.CheckPoints` and `Framework.Outline` from `com.vishnu.framework.core` | Scene-authored `Task` components |
+| `Framework.Audio` | | Narration playback for tasks. |
 
 Requires Unity 2022.3 or newer and the Universal Render Pipeline.
 
