@@ -247,6 +247,21 @@ namespace Framework.Sequencing.Tests
             Assert.IsTrue(_target.activeSelf);
         }
 
+        [Test]
+        public void Cancelling_a_parallel_group_of_two_enable_tasks_on_the_same_object_restores_the_original_state()
+        {
+            var second = _host.AddComponent<EnableTask>();
+            Assign(second, "gameObjectToEnable", _target);
+            AssignState(second, SubtaskState.Off);
+            var group = ParallelGroupOf(_enableTask, second);
+            group.Execute();
+            Assert.IsFalse(_target.activeSelf);
+
+            group.Cancel();
+
+            Assert.IsFalse(_target.activeSelf);
+        }
+
         private ParallelSubtask ParallelGroupOf(params GameObjectTask[] subtasks)
         {
             var group = _host.AddComponent<ParallelSubtask>();
