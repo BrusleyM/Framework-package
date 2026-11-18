@@ -42,9 +42,9 @@ namespace Framework.Tasks
             StopListeningToEverySubtask();
             var everySubtask = new List<GameObjectTask>();
             CollectDistinctSubtasksInto(everySubtask);
-            foreach (var subtask in everySubtask)
+            for (var index = everySubtask.Count - 1; index >= 0; index--)
             {
-                subtask.Cancel();
+                everySubtask[index].Cancel();
             }
             _runningSubtasks.Clear();
         }
