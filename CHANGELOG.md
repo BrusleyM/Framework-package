@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed
+- The Test sample scene is grouped by role: Managers (the game manager), Tasks, Checkpoints, Blocks, Player and Environment, and every task now keeps its subtasks in a `Subtasks` child. The `SequentialTask` component sits on the `Tasks` object instead of on the game manager object, and the game manager points at it. No object moved in the world, and the scene still starts its sequence on the welcome task.
+
 ### Fixed
 - A long run of subtasks that finish instantly no longer grows the call stack: the action task starts the next listed subtask in a loop instead of from inside the previous one's completion event, so thousands of instant subtasks cannot overflow it. Empty slots are skipped in the same loop. A subtask that finishes during its own `Execute` now has the next one started after `Execute` returns, not from inside its completion event (a subtask that finishes later still starts the next one from its completion event), and cancelling or skipping the task while that subtask is finishing no longer lets the next one start.
 - A parallel subtask that ends up containing itself, directly or through another group, logs an error and refuses a nested execute, and ignores a nested cancel, instead of recursing without end. The inspector already rejects such a slot; this covers lists set from code. A group's completed listeners now run after its children have finished executing, so a listener may execute the group again.
