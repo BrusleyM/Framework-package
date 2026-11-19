@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- In the Test sample scene the checkpoint boxes Cube (3) and Last (1) no longer have a Rigidbody, like First (1). With one, the block pushed the box (and its snap point) away before and during the snap, and a box overlapping a snapped block drifted off its place, so a snapped block ended up to 3 m from the authored checkpoint position. All three blocks now snap exactly onto their checkpoints.
+
 ### Changed
 - The Test sample scene's guide character now comes from `Robot instructor.prefab` and `Robot instructor.fbx` (the former Ligma files renamed in `Samples/Base Models/Mesh`: same mesh and materials, and the root object inside the prefab is still named `Ligma`). The prefab now includes what the scene used to override on it (position, rotation, emission, samples and the audio source) and drops a disabled duplicate component. The game manager is its own `gm` object under Managers instead of living on the character, still pointing at the sequence on the `Tasks` object.
 - The Test sample scene uses `SnapPoint`, `Snappable` and `SnapKey` instead of the obsolete `SnapObject`: each checkpoint object accepts one key (Middle, First or Last, in `Samples/Scenes/Snap Keys`), each block carries the matching key, and a snapped block glides into place and ticks its checkpoint through the snap point's snapped event. Matching no longer depends on object names.
