@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- The Test sample scene uses `SnapPoint`, `Snappable` and `SnapKey` instead of the obsolete `SnapObject`: each checkpoint object accepts one key (Middle, First or Last, in `Samples/Scenes/Snap Keys`), each block carries the matching key, and a snapped block glides into place and ticks its checkpoint through the snap point's snapped event. Matching no longer depends on object names.
 - The Test sample scene is grouped by role: Managers (the game manager), Tasks, Checkpoints, Blocks, Player and Environment, and every task that has subtasks keeps them in a `Subtasks` child. The `SequentialTask` component sits on the `Tasks` object instead of on the game manager object, and the game manager points at it. No object moved in the world, and the scene still starts its sequence on the welcome task.
 
 ### Fixed
