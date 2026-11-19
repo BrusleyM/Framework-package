@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 ### Changed
-- The Test sample scene is grouped by role: Managers (the game manager), Tasks, Checkpoints, Blocks, Player and Environment, and every task now keeps its subtasks in a `Subtasks` child. The `SequentialTask` component sits on the `Tasks` object instead of on the game manager object, and the game manager points at it. No object moved in the world, and the scene still starts its sequence on the welcome task.
+- The Test sample scene is grouped by role: Managers (the game manager), Tasks, Checkpoints, Blocks, Player and Environment, and every task that has subtasks keeps them in a `Subtasks` child. The `SequentialTask` component sits on the `Tasks` object instead of on the game manager object, and the game manager points at it. No object moved in the world, and the scene still starts its sequence on the welcome task.
 
 ### Fixed
 - A long run of subtasks that finish instantly no longer grows the call stack: the action task starts the next listed subtask in a loop instead of from inside the previous one's completion event, so thousands of instant subtasks cannot overflow it. Empty slots are skipped in the same loop. A subtask that finishes during its own `Execute` now has the next one started after `Execute` returns, not from inside its completion event (a subtask that finishes later still starts the next one from its completion event), and cancelling or skipping the task while that subtask is finishing no longer lets the next one start.
