@@ -1130,7 +1130,6 @@ GameObject:
   - component: {fileID: 712608493}
   - component: {fileID: 712608492}
   - component: {fileID: 712608491}
-  - component: {fileID: 712608490}
   - component: {fileID: 712608496}
   - component: {fileID: 712608498}
   - component: {fileID: 712608497}
@@ -1141,33 +1140,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 0
---- !u!54 &712608490
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 712608487}
-  serializedVersion: 4
-  m_Mass: 1
-  m_Drag: 0
-  m_AngularDrag: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 1
-  m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
-  m_Interpolate: 0
-  m_Constraints: 0
-  m_CollisionDetection: 0
 --- !u!65 &712608491
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1662,7 +1634,6 @@ GameObject:
   - component: {fileID: 1083024352}
   - component: {fileID: 1083024351}
   - component: {fileID: 1083024350}
-  - component: {fileID: 1083024349}
   - component: {fileID: 1083024348}
   - component: {fileID: 1083024355}
   - component: {fileID: 1083024354}
@@ -1695,33 +1666,6 @@ MonoBehaviour:
     _onAllChecked:
       m_PersistentCalls:
         m_Calls: []
---- !u!54 &1083024349
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1083024346}
-  serializedVersion: 4
-  m_Mass: 1
-  m_Drag: 0
-  m_AngularDrag: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 1
-  m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
-  m_Interpolate: 0
-  m_Constraints: 0
-  m_CollisionDetection: 0
 --- !u!65 &1083024350
 BoxCollider:
   m_ObjectHideFlags: 0
