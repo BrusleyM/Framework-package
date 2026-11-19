@@ -10,31 +10,31 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 0.21509922
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 1.548
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -3.117271
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.7071068
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.7071068
+      value: -0.0000014603138
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -42,7 +42,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: -90
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -81,14 +81,16 @@ PrefabInstance:
       addedObject: {fileID: 7241466312838228012}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4832541226992964505}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 5723252859788503726}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7308666209505091618}
   m_SourcePrefab: {fileID: 100100000, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
+--- !u!4 &54517013758958244 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
+  m_PrefabInstance: {fileID: 525539697786371407}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &831615911690567710 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 1d7a0e9d67b7f414f82df84ff4557797, type: 3}
@@ -110,283 +112,10 @@ MonoBehaviour:
   Multiplier: 500
   Max: 100
   material: {fileID: 2100000, guid: b5740628defc79d46a1484eec3fdcb5e, type: 2}
-  emission: {r: 1, g: 1, b: 1, a: 1}
+  emission: {r: 1, g: 0, b: 0, a: 1}
   Samples:
-  - 0
-  source: {fileID: 0}
---- !u!114 &4832541226992964505
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 831615911690567710}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b67f96ed30257294bb8d037b4c5247a2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  EmissionIntensity: 0
-  Multiplier: 500
-  Max: 100
-  material: {fileID: 2100000, guid: 8835593847f71374aaffe3a512cd65b8, type: 2}
-  emission: {r: 1, g: 1, b: 1, a: 1}
-  Samples:
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  - 0
-  source: {fileID: 0}
+  - 5
+  source: {fileID: 7308666209505091618}
 --- !u!114 &5723252859788503726
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -400,8 +129,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   locations:
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 54517013758958244}
   speed: 5
   tiltAngle: 25
   currentLocationIndex: 0
@@ -410,7 +138,7 @@ MonoBehaviour:
   idleAmplitude: 0.1
   idleFrequency: 2
   _minDistToTarget: 5
-  maxDistToTarget: 10
+  maxDistToTarget: 6
   positionOffset: {x: 0, y: 0, z: 5}
 --- !u!82 &7308666209505091618
 AudioSource:
