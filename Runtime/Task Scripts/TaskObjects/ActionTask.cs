@@ -22,13 +22,47 @@ namespace Framework.Tasks
         private int _subTaskIndex;
         private bool _isAdvancingSubtasks;
         private bool _advanceRequested;
+        private bool _isShowingHint;
 
         public CheckPointsParent CheckPointsParent => _checkPoints;
         public GameObjectTask CurrentSubtask { get; private set; }
         public override bool IsSettling => IsFeedbackAudioPlaying();
 
+        public override void StartTaskUnguided()
+        {
+            StopEverythingInProgress();
+            _isShowingHint = false;
+            LinkCheckPointsToThisTask();
+            _checkPoints.ResetAllPoints();
+            ListenForAllCheckPointsChecked();
+        }
+
+        public override void ShowHint()
+        {
+            if (IsComplete || _isShowingHint)
+            {
+                return;
+            }
+
+            _isShowingHint = true;
+            PlayInstructionalAudio();
+            StartSubTasks();
+        }
+
+        public override void HideHint()
+        {
+            if (!_isShowingHint)
+            {
+                return;
+            }
+
+            StopShowingHint();
+            _audioPlayer?.Stop();
+        }
+
         public override void StartTask()
         {
+            _isShowingHint = false;
             StopEverythingInProgress();
             LinkCheckPointsToThisTask();
             _checkPoints.ResetAllPoints();
@@ -46,6 +80,7 @@ namespace Framework.Tasks
             }
 
             StopEverythingInProgress();
+            StopShowingHint();
             PlayFeedbackAudio();
             MarkComplete();
         }
@@ -59,6 +94,7 @@ namespace Framework.Tasks
 
             IsSkip = true;
             StopEverythingInProgress();
+            _isShowingHint = false;
             _audioPlayer?.Stop();
             TearDownSubTasks();
             MarkComplete();
@@ -67,6 +103,7 @@ namespace Framework.Tasks
         public override void CancelTask()
         {
             StopEverythingInProgress();
+            _isShowingHint = false;
             _audioPlayer?.Stop();
             TearDownSubTasks();
             _checkPoints.ResetAllPoints();
@@ -81,6 +118,20 @@ namespace Framework.Tasks
         private void OnDisable()
         {
             StopEverythingInProgress();
+            StopShowingHint();
+        }
+
+        private void StopShowingHint()
+        {
+            if (!_isShowingHint)
+            {
+                return;
+            }
+
+            _isShowingHint = false;
+            DetachFromCurrentSubTask();
+            _advanceRequested = false;
+            TearDownSubTasks();
         }
 
         private void StopEverythingInProgress()

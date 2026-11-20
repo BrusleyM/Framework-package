@@ -88,6 +88,12 @@ A condition implements `IStepCondition`: it is armed when the step starts and di
 - `ColliderContactCondition`: satisfied when a collider on an accepted layer touches this one, including contact that already exists. It accepts no layers until you choose them.
 - `InteractableCondition` (XRI 3.x): satisfied on hover or select, or on activate, of an interactable. It also completes at once if the interactable is already hovered or selected. Whether activate fires depends on your interaction profile, so select is the reliable choice for pokes and grabs.
 
+## Unguided sequences
+
+A guided sequence walks the user through the tasks one at a time. For a free part, where the user may do the tasks in any order, add a `FreeGroupTask` and list the tasks in it. It starts them all without guidance (no audio, reminders or highlights) and completes when every one is done, so the next task of the sequence starts after it.
+
+A hint is only shown when asked for: call `RequestHint()` on the group (for example from a button or a UnityEvent), or set Hint After Idle Seconds to hint by itself after that long without progress. The hint is the task's own guidance: an `ActionTask` plays its instruction audio and runs its subtasks, so its highlights appear. Hints go to the first open task in the list, and finishing the task takes its hint down. The group also records the order in which the tasks were finished (`CompletionOrder`, `PositionOf`, `WasCompletedInListedOrder`), which helps when order matters: the group raises `OnCompletedInListedOrder` or `OnCompletedOutOfOrder` when the last task is done and can play one feedback clip for the whole group, so leave the tasks' own feedback clips empty. A custom task opts in by overriding `StartTaskUnguided`, `ShowHint` and `HideHint`.
+
 ## Build a sequence in the editor
 
 No code is needed to author a sequence. Everything is a component you add and wire in the Inspector.
