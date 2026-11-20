@@ -12,7 +12,7 @@ A reusable sequencing framework for Unity. Tell a guided flow, such as a tutoria
 | `Framework.Sequencing.Xr` | Core, XR Interaction Toolkit 3.x | `InteractableCondition`. Compiles only when XRI 3.x is installed (version define `FRAMEWORK_XR_INTERACTION_TOOLKIT`). |
 | `Framework.Tasks` | Audio | Scene-authored `Task` components that need nothing from the core package: `Task`, `GuidedTask` (audio, reminders, subtasks, hints, pause, with the completion left to the subclass), `AudioTask`, subtasks. Derive from `GuidedTask` for a task that completes some other way, such as a quiz answer. |
 | `Framework.Tasks.Interaction` | Tasks, `Framework.CheckPoints` and `Framework.Outline` from `com.vishnu.framework.core` | The tasks that use check points and outlines: `ActionTask` (a `GuidedTask` that completes when all its check points are checked), `TrackCheckPoint` and the highlight subtasks. |
-| `Framework.Audio` | | Narration playback for tasks. |
+| `Framework.Audio` | | `IVoicePlayer` (narration with owners), `AudioPlayer` (on an `AudioSource`), `ManualVoicePlayer` (no audio device, for tests). |
 
 Requires Unity 2022.3 or newer and the Universal Render Pipeline.
 
@@ -103,6 +103,16 @@ A task's check points never force an order: an `ActionTask` completes when all i
 - A hint goes to the first open task that has one (a task that implements `IHintable`; an `ActionTask` does).
 
 `Intro Audio` and `Complete Audio` on the `SequentialTask` play in both modes: the intro once when the sequence is run (`Run()` plays it; `Restart()` and a mode switch do not), the complete audio after the last task. The intro is its own short run before the tasks start, so the mode that applies is the one set when it ends. Changing the mode during the intro lets it finish by default, and cuts it and starts the tasks at once when Allow Cutting Intro is ticked. While they play, `CurrentStageIndex` is -1. Use them instead of an audio task at the start and a feedback clip on the last task. A custom task opts in by implementing the capability interfaces it needs: `IUnguidedTask` (start without guidance), `IHintable` (show and hide a hint), `IPausableTask`, `ISettlingTask` (still playing its own audio after completing: `TaskStep` waits for it before moving on) and the marker `IGuidanceOnlyTask` (skipped in unguided mode). `Task` itself only has start, complete, skip, cancel and prepare; a task that implements none of them is started normally in unguided mode and is never hinted or paused. A subclass of `GuidedTask` or `AudioTask` customises these by overriding their virtual members (`ShowHint`, `HideHint`, `StartTaskUnguided`, `PauseTask`, `ResumeTask`, `IsSettling`).
+
+## Audio
+
+Narration goes through an `IVoicePlayer`. Every clip is played for an owner (the task or step that asked for it), and only the owner can stop, pause or resume it, so one task can no longer cut another's audio. Playing for a new owner replaces what was playing, and the replaced owner's finished callback is dropped.
+
+- `Play(clip, owner, onFinished)`: the callback is raised once when the clip ends, not when it is stopped. `AudioTask` and `AudioStep` chain their clips with it, so nothing waits on `isPlaying` any more.
+- `Stop(owner)`, `Pause(owner)`, `Resume(owner)` act only on the owner's audio; `IsPlayingFor(owner)` tells a task whether its own audio is still playing (that is what `ISettlingTask.IsSettling` reports). `StopAll()` is for the host.
+- `AudioPlayer` is the implementation on an `AudioSource` (the `SequentialTask` creates one from its Audio Source). It adds a hidden component that checks for the end of the clip only while something is playing, and does not treat a clip as finished while the application is unfocused.
+- `SequentialTask.UseVoicePlayer(player)` swaps the player. `ManualVoicePlayer` plays nothing and finishes a clip when you call `FinishCurrent()`, so audio logic can be tested without an audio device.
+- A custom task plays with `_audioPlayer.Play(clip, this, onFinished)` and stops with `_audioPlayer.Stop(this)`.
 
 ## Build a sequence in the editor
 

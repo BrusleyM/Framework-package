@@ -13,7 +13,7 @@ namespace Framework.Sequencing.Tests
     {
         private GameObject _host;
         private SequentialTask _sequence;
-        private AudioSource _source;
+        private ManualVoicePlayer _voice;
 
         [SetUp]
         public void SetUp()
@@ -244,12 +244,13 @@ namespace Framework.Sequencing.Tests
         public IEnumerator The_intro_audio_plays_before_the_first_task_starts_in_either_mode()
         {
             var task = AddTask("only");
-            UseAudio(intro: new[] { Clip("intro", 0.3f) });
+            UseAudio(intro: new[] { Clip("intro") });
 
             _sequence.Run();
             yield return null;
             var startedDuringIntro = task.StartCount;
-            yield return new WaitForSeconds(0.8f);
+            _voice.FinishCurrent();
+            yield return null;
 
             Assert.AreEqual(0, startedDuringIntro);
             Assert.AreEqual(1, task.StartCount);
@@ -259,13 +260,14 @@ namespace Framework.Sequencing.Tests
         public IEnumerator The_intro_is_also_played_before_the_unguided_tasks()
         {
             var task = AddTask("only");
-            UseAudio(intro: new[] { Clip("intro", 0.3f) });
+            UseAudio(intro: new[] { Clip("intro") });
             _sequence.SetMode(GuidanceMode.Unguided);
 
             _sequence.Run();
             yield return null;
             var startedDuringIntro = task.UnguidedStartCount;
-            yield return new WaitForSeconds(0.8f);
+            _voice.FinishCurrent();
+            yield return null;
 
             Assert.AreEqual(0, startedDuringIntro);
             Assert.AreEqual(1, task.UnguidedStartCount);
@@ -275,14 +277,15 @@ namespace Framework.Sequencing.Tests
         public IEnumerator The_complete_audio_plays_after_the_last_task_and_only_then_the_sequence_completes()
         {
             var task = AddTask("only");
-            UseAudio(complete: new[] { Clip("complete", 0.4f) });
+            UseAudio(complete: new[] { Clip("complete") });
             _sequence.Run();
             yield return null;
 
             task.Finish();
             yield return null;
             var stateWhilePlaying = _sequence.Runner.State;
-            yield return new WaitForSeconds(0.9f);
+            _voice.FinishCurrent();
+            yield return null;
 
             Assert.AreEqual(SequenceState.Running, stateWhilePlaying);
             Assert.AreEqual(SequenceState.Completed, _sequence.Runner.State);
@@ -293,7 +296,7 @@ namespace Framework.Sequencing.Tests
         {
             var first = AddTask("first");
             var second = AddTask("second");
-            UseAudio(complete: new[] { Clip("complete", 0.4f) });
+            UseAudio(complete: new[] { Clip("complete") });
             _sequence.SetMode(GuidanceMode.Unguided);
             _sequence.Run();
             yield return null;
@@ -302,7 +305,8 @@ namespace Framework.Sequencing.Tests
             first.Finish();
             yield return null;
             var stateWhilePlaying = _sequence.Runner.State;
-            yield return new WaitForSeconds(0.9f);
+            _voice.FinishCurrent();
+            yield return null;
 
             Assert.AreEqual(SequenceState.Running, stateWhilePlaying);
             Assert.AreEqual(SequenceState.Completed, _sequence.Runner.State);
@@ -312,15 +316,18 @@ namespace Framework.Sequencing.Tests
         public IEnumerator Switching_the_mode_while_running_does_not_play_the_intro_again()
         {
             var task = AddTask("only");
-            UseAudio(intro: new[] { Clip("intro", 0.2f) });
+            UseAudio(intro: new[] { Clip("intro") });
             _sequence.Run();
-            yield return new WaitForSeconds(0.6f);
+            yield return null;
+            _voice.FinishCurrent();
+            yield return null;
 
             _sequence.SetMode(GuidanceMode.Unguided);
             yield return null;
             yield return null;
 
             Assert.AreEqual(1, task.UnguidedStartCount);
+            Assert.AreEqual(1, _voice.Played.Count);
         }
 
         [UnityTest]
@@ -340,12 +347,13 @@ namespace Framework.Sequencing.Tests
         {
             AddTask("first");
             AddTask("second");
-            UseAudio(intro: new[] { Clip("intro", 0.3f) });
+            UseAudio(intro: new[] { Clip("intro") });
             _sequence.Run();
             yield return null;
             var duringIntro = _sequence.CurrentStageIndex;
 
-            yield return new WaitForSeconds(0.8f);
+            _voice.FinishCurrent();
+            yield return null;
 
             Assert.AreEqual(-1, duringIntro);
             Assert.AreEqual(0, _sequence.CurrentStageIndex);
@@ -355,15 +363,18 @@ namespace Framework.Sequencing.Tests
         public IEnumerator Going_back_from_the_first_task_restarts_it_and_does_not_replay_the_intro()
         {
             var first = AddTask("first");
-            UseAudio(intro: new[] { Clip("intro", 0.2f) });
+            UseAudio(intro: new[] { Clip("intro") });
             _sequence.Run();
-            yield return new WaitForSeconds(0.6f);
+            yield return null;
+            _voice.FinishCurrent();
+            yield return null;
 
             _sequence.GoBack();
             yield return null;
 
             Assert.AreSame(first, _sequence.CurrentTask);
             Assert.AreEqual(2, first.StartCount);
+            Assert.AreEqual(1, _voice.Played.Count);
         }
 
         [UnityTest]
@@ -385,15 +396,16 @@ namespace Framework.Sequencing.Tests
         public IEnumerator Changing_the_mode_during_the_intro_lets_the_intro_finish_and_then_starts_the_tasks_in_the_new_mode()
         {
             var task = AddTask("only");
-            UseAudio(intro: new[] { Clip("intro", 0.6f) });
+            UseAudio(intro: new[] { Clip("intro") });
             _sequence.Run();
             yield return null;
 
             _sequence.SetMode(GuidanceMode.Unguided);
             yield return null;
-            var introStillPlaying = _source.isPlaying;
+            var introStillPlaying = _voice.IsPlaying;
             var tasksStartedEarly = task.UnguidedStartCount + task.StartCount;
-            yield return new WaitForSeconds(1.2f);
+            _voice.FinishCurrent();
+            yield return null;
 
             Assert.IsTrue(introStillPlaying);
             Assert.AreEqual(0, tasksStartedEarly);
@@ -405,7 +417,7 @@ namespace Framework.Sequencing.Tests
         public IEnumerator When_cutting_the_intro_is_allowed_changing_the_mode_stops_it_and_starts_the_tasks_in_the_new_mode()
         {
             var task = AddTask("only");
-            UseAudio(intro: new[] { Clip("intro", 2f) });
+            UseAudio(intro: new[] { Clip("intro") });
             Set("_allowCuttingIntro", true);
             _sequence.Run();
             yield return null;
@@ -414,7 +426,7 @@ namespace Framework.Sequencing.Tests
             yield return null;
             yield return null;
 
-            Assert.IsFalse(_source.isPlaying);
+            Assert.IsFalse(_voice.IsPlaying);
             Assert.AreEqual(1, task.UnguidedStartCount);
         }
 
@@ -575,8 +587,8 @@ namespace Framework.Sequencing.Tests
 
         private void UseAudio(MyClip[] intro = null, MyClip[] complete = null)
         {
-            _source = _host.AddComponent<AudioSource>();
-            Set("_audioSource", _source);
+            _voice = new ManualVoicePlayer();
+            _sequence.UseVoicePlayer(_voice);
             Set("_introAudio", new List<MyClip>(intro ?? new MyClip[0]));
             Set("_completeAudio", new List<MyClip>(complete ?? new MyClip[0]));
         }
@@ -586,11 +598,9 @@ namespace Framework.Sequencing.Tests
             typeof(SequentialTask).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(_sequence, value);
         }
 
-        private static MyClip Clip(string name, float seconds)
+        private static MyClip Clip(string name)
         {
-            var samples = (int)(44100 * seconds);
-            var clip = AudioClip.Create(name, samples, 1, 44100, false);
-            clip.SetData(new float[samples], 0);
+            var clip = AudioClip.Create(name, 100, 1, 44100, false);
             return new MyClip { name = name, clip = clip };
         }
 

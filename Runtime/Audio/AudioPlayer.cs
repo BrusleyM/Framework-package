@@ -70,9 +70,11 @@ namespace Framework.Audio
             }
         }
 
+        private static bool IsAppUnfocused => !Application.isBatchMode && !Application.isFocused;
+
         internal void Tick()
         {
-            if (!_channel.IsPlaying || _channel.IsPaused || _audioSource.isPlaying || !Application.isFocused)
+            if (!_channel.IsPlaying || _channel.IsPaused || _audioSource.isPlaying || IsAppUnfocused)
             {
                 return;
             }
