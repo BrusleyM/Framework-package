@@ -105,6 +105,29 @@ def find_manifest_problems(package_root):
     return problems
 
 
+def find_sample_problems(package_root):
+    manifest = json.loads((package_root / "package.json").read_text())
+    problems = []
+    listed = set()
+    for index, sample in enumerate(manifest.get("samples", [])):
+        for field in ("displayName", "description", "path"):
+            if not sample.get(field):
+                problems.append(f"package.json samples entry {index} has no {field}")
+        path = sample.get("path")
+        if path:
+            listed.add(path)
+            if not (package_root / path).is_dir():
+                problems.append(f"package.json sample path {path} is not a folder")
+    samples_root = package_root / "Samples~"
+    if samples_root.is_dir():
+        for folder in sorted(samples_root.iterdir()):
+            if folder.is_dir() and f"Samples~/{folder.name}" not in listed:
+                problems.append(f"Samples~/{folder.name} is not listed in the package.json samples")
+    if (package_root / "Samples").exists():
+        problems.append("Samples/ is imported into every project that installs the package: move it to Samples~ and list it in package.json")
+    return problems
+
+
 def find_changelog_problems(package_root, version, require_release_section):
     changelog = (package_root / "CHANGELOG.md").read_text()
     if release_tools.UNRELEASED_HEADING not in changelog:
@@ -124,6 +147,7 @@ def collect_problems(package_root, require_release_section=False, dependency_roo
     problems += find_orphan_metas(package_root)
     problems += find_duplicate_guids(package_root)
     problems += find_unresolved_assembly_references(package_root, dependency_roots)
+    problems += find_sample_problems(package_root)
     if not problems:
         version = release_tools.read_package_version(package_root)
         problems += find_changelog_problems(package_root, version, require_release_section)

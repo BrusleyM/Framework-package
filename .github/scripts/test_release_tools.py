@@ -177,6 +177,41 @@ class PackageCheckTests(unittest.TestCase):
 
         self.assertEqual([], check_package.find_missing_metas(self.root))
 
+    def write_manifest(self, samples):
+        (self.root / "package.json").write_text(json.dumps({"name": "x", "samples": samples}))
+
+    def test_a_listed_sample_that_exists_has_no_problems(self):
+        (self.root / "Samples~" / "Showcase").mkdir(parents=True)
+        self.write_manifest([{"displayName": "Showcase", "description": "d", "path": "Samples~/Showcase"}])
+
+        self.assertEqual([], check_package.find_sample_problems(self.root))
+
+    def test_a_sample_entry_without_a_name_description_or_path_is_reported(self):
+        self.write_manifest([{"displayName": "Showcase"}])
+
+        self.assertEqual(
+            ["package.json samples entry 0 has no description", "package.json samples entry 0 has no path"],
+            check_package.find_sample_problems(self.root),
+        )
+
+    def test_a_sample_path_that_is_not_a_folder_is_reported(self):
+        self.write_manifest([{"displayName": "S", "description": "d", "path": "Samples~/Missing"}])
+
+        self.assertEqual(["package.json sample path Samples~/Missing is not a folder"], check_package.find_sample_problems(self.root))
+
+    def test_a_samples_folder_that_is_not_listed_is_reported(self):
+        (self.root / "Samples~" / "Hidden").mkdir(parents=True)
+        self.write_manifest([])
+
+        self.assertEqual(["Samples~/Hidden is not listed in the package.json samples"], check_package.find_sample_problems(self.root))
+
+    def test_samples_left_at_the_package_root_are_reported(self):
+        (self.root / "Samples").mkdir()
+        self.write_manifest([])
+
+        self.assertEqual(1, len(check_package.find_sample_problems(self.root)))
+        self.assertIn("move it to Samples~", check_package.find_sample_problems(self.root)[0])
+
     def test_a_meta_file_without_its_asset_is_reported(self):
         (self.root / "Gone.cs.meta").write_text("guid: " + "b" * 32 + "\n")
 
@@ -265,6 +300,33 @@ class HostProjectTests(unittest.TestCase):
             self.assertEqual("m_EditorVersion: 6000.3.9f1\n", (project / "ProjectSettings" / "ProjectVersion.txt").read_text())
             self.assertIn("file:../..", (project / "Packages" / "manifest.json").read_text())
             self.assertTrue((project / "Assets").is_dir())
+
+
+class ImportSamplesTests(unittest.TestCase):
+    def test_the_samples_are_copied_into_the_host_project_like_the_package_manager_does(self):
+        with tempfile.TemporaryDirectory() as folder:
+            package = pathlib.Path(folder) / "package"
+            (package / "Samples~" / "Showcase").mkdir(parents=True)
+            (package / "Samples~" / "Showcase" / "a.cs").write_text("a")
+            (package / "package.json").write_text(json.dumps({
+                "displayName": "Framework Sequencer",
+                "version": "3.2.0",
+                "samples": [{"displayName": "Showcase", "description": "d", "path": "Samples~/Showcase"}],
+            }))
+            project = package / ".host"
+
+            imported = create_host_project.import_samples(project, package)
+
+            expected = project / "Assets" / "Samples" / "Framework Sequencer" / "3.2.0" / "Showcase"
+            self.assertEqual([expected], imported)
+            self.assertEqual("a", (expected / "a.cs").read_text())
+
+    def test_a_package_without_samples_imports_nothing(self):
+        with tempfile.TemporaryDirectory() as folder:
+            package = pathlib.Path(folder)
+            (package / "package.json").write_text(json.dumps({"displayName": "X", "version": "1.0.0"}))
+
+            self.assertEqual([], create_host_project.import_samples(package / ".host", package))
 
 
 class TestResultsTests(unittest.TestCase):

@@ -171,6 +171,10 @@ public sealed class ShowHintStep : StepBase
 
 Call `Finish()` from any event handler to complete the step, or `Fail(exception)` to fault the sequence. Override `OnPause` and `OnResume` if the step has its own timers or audio to hold. `OnExit` runs on every exit path (completed, skipped, rewound, restarted, cancelled), so clean up there.
 
+## Sample
+
+The Test scene is an optional sample (a Robot instructor, snap points, check points, highlights, guided and unguided mode, and the tests of its robot follow rules). It does not install with the package: import it in the Package Manager (select Framework Sequencer, open the Samples tab, press Import) and it is copied to `Assets/Samples/Framework Sequencer/<version>/Test scene`. When the package is a folder inside Assets (a submodule, for example) Unity does not list its samples, so use Tools > Framework > Import sequencer samples, which copies it to `Assets/Samples/Framework Sequencer/Test scene`. The scene needs the core package. Open `Scenes/Test scene.unity` from the imported folder.
+
 ## Installation
 
 Install core first, then the sequencer, both by git URL in Package Manager. Unity does not resolve git-URL dependencies, so installing the sequencer alone fails with `Package [com.vishnu.framework.core@1.0.0] cannot be found`.
