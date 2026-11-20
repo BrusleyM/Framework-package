@@ -118,6 +118,7 @@ namespace Framework.Tasks
         private void OnDisable()
         {
             StopEverythingInProgress();
+            StopShowingHint();
         }
 
         private void StopShowingHint()

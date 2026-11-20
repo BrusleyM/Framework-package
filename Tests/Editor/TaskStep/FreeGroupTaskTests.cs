@@ -245,6 +245,72 @@ namespace Framework.Sequencing.Tests
             Assert.That(_group.IsSettling, Is.True);
         }
 
+        [Test]
+        public void A_hint_is_not_shown_while_a_task_is_still_playing_its_feedback()
+        {
+            _group.StartTask();
+            _second.Settling = true;
+
+            var shown = _group.RequestHint();
+
+            Assert.That(shown, Is.False);
+            Assert.That(_first.HintShowCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Completing_the_group_directly_cancels_the_open_tasks_and_takes_the_hint_down()
+        {
+            _group.StartTask();
+            _group.RequestHint();
+
+            _group.TaskComplete();
+
+            Assert.That(_first.CancelCount, Is.EqualTo(1));
+            Assert.That(_second.CancelCount, Is.EqualTo(1));
+            Assert.That(_first.HintHideCount, Is.EqualTo(1));
+            Assert.That(_group.HintedTask, Is.Null);
+        }
+
+        [Test]
+        public void Starting_the_group_again_forgets_the_hint_of_the_previous_run()
+        {
+            _group.StartTask();
+            _group.RequestHint();
+            _group.CancelTask();
+
+            _group.Prepare();
+            _group.StartTask();
+            _group.RequestHint();
+
+            Assert.That(_first.HintShowCount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void The_hint_of_a_task_that_finishes_is_hidden()
+        {
+            _group.StartTask();
+            _group.RequestHint();
+
+            _first.Finish();
+
+            Assert.That(_first.HintHideCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void A_group_inside_a_group_passes_the_hint_on_to_its_own_first_open_task()
+        {
+            var inner = _host.AddComponent<FreeGroupTask>();
+            var innerTask = _host.AddComponent<HintableTask>();
+            Assign(inner, innerTask);
+            var outer = _host.AddComponent<FreeGroupTask>();
+            Assign(outer, inner);
+            outer.StartTask();
+
+            outer.RequestHint();
+
+            Assert.That(innerTask.HintShowCount, Is.EqualTo(1));
+        }
+
         private static void Assign(FreeGroupTask group, params Task[] tasks)
         {
             var serialized = new SerializedObject(group);

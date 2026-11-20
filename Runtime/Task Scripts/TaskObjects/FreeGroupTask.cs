@@ -48,6 +48,7 @@ namespace Framework.Tasks
         public override void StartTask()
         {
             StopEverythingInProgress();
+            _hintedTask = null;
             _isRunning = true;
             CollectDistinctTasks();
             _isStarting = true;
@@ -77,6 +78,16 @@ namespace Framework.Tasks
             return shown;
         }
 
+        public override void ShowHint()
+        {
+            RequestHint();
+        }
+
+        public override void HideHint()
+        {
+            HideCurrentHint();
+        }
+
         public override void TaskComplete()
         {
             if (IsComplete)
@@ -84,6 +95,8 @@ namespace Framework.Tasks
                 return;
             }
 
+            HideCurrentHint();
+            CancelOpenTasks();
             StopEverythingInProgress();
             MarkComplete();
         }
@@ -112,6 +125,27 @@ namespace Framework.Tasks
         public override void CancelTask()
         {
             HideCurrentHint();
+            CancelOpenTasks();
+            StopEverythingInProgress();
+            _running.Clear();
+            _acknowledged.Clear();
+        }
+
+        private void OnEnable()
+        {
+            if (_isRunning)
+            {
+                RestartIdleHintTimer();
+            }
+        }
+
+        private void OnDisable()
+        {
+            StopIdleHintTimer();
+        }
+
+        private void CancelOpenTasks()
+        {
             foreach (var task in _running)
             {
                 task.Completed -= OnTaskFinished;
@@ -120,15 +154,6 @@ namespace Framework.Tasks
                     task.CancelTask();
                 }
             }
-
-            StopEverythingInProgress();
-            _running.Clear();
-            _acknowledged.Clear();
-        }
-
-        private void OnDisable()
-        {
-            StopIdleHintTimer();
         }
 
         private void CollectDistinctTasks()
@@ -184,6 +209,7 @@ namespace Framework.Tasks
             if (task == _hintedTask)
             {
                 _hintedTask = null;
+                task.HideHint();
             }
 
             task.OnCompleteTask.Invoke();
@@ -242,6 +268,11 @@ namespace Framework.Tasks
             if (task == _hintedTask && !replayIfAlreadyShown)
             {
                 return true;
+            }
+
+            if (IsSettling)
+            {
+                return false;
             }
 
             HideCurrentHint();

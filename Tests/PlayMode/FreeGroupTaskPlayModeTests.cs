@@ -114,6 +114,20 @@ namespace Framework.Sequencing.Tests
             Assert.That(_first.HintShowCount, Is.EqualTo(1));
         }
 
+        [UnityTest]
+        public IEnumerator The_idle_hint_keeps_working_after_the_group_was_disabled_and_enabled_again()
+        {
+            SetPrivate(_group, "_hintAfterIdleSeconds", 0.3f);
+            _sequence.Run();
+            yield return null;
+
+            _group.enabled = false;
+            _group.enabled = true;
+            yield return new WaitForSeconds(0.6f);
+
+            Assert.That(_first.HintShowCount, Is.EqualTo(1));
+        }
+
         private static void SetPrivate(object target, string fieldName, object value)
         {
             var field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);

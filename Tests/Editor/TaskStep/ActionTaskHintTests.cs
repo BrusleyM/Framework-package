@@ -113,6 +113,19 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
+        public void Disabling_the_task_takes_the_hint_down_so_it_can_be_shown_again_later()
+        {
+            _task.StartTaskUnguided();
+            _task.ShowHint();
+
+            typeof(ActionTask).GetMethod("OnDisable", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(_task, null);
+            _task.ShowHint();
+
+            Assert.That(_highlight.CancelCount, Is.EqualTo(1));
+            Assert.That(_highlight.ExecuteCount, Is.EqualTo(2));
+        }
+
+        [Test]
         public void Guided_start_still_runs_the_subtasks_without_asking_for_a_hint()
         {
             _task.StartTask();
