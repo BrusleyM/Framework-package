@@ -12,27 +12,31 @@ namespace Framework.Tasks
         [SerializeField]
         private UnityEvent _onCompleteTask = new UnityEvent();
 
-        protected AudioPlayer _audioPlayer;
+        protected IVoicePlayer _audioPlayer;
 
         public string TaskName => _taskName;
-        public bool IsDoing { get; protected set; }
-        public bool IsComplete { get; protected set; }
-        public bool IsSkip { get; protected set; }
+        public TaskOutcome Outcome { get; private set; }
+        public bool IsComplete => Outcome != TaskOutcome.Pending;
+        public bool IsSkip => Outcome == TaskOutcome.Skipped;
         public UnityEvent OnCompleteTask => _onCompleteTask;
-        public virtual bool IsSettling => false;
+        public ITaskClock Clock { get; private set; } = TaskClocks.Scaled;
 
         public event Action Completed;
 
-        public void SetAudioPlayer(AudioPlayer player)
+        public void SetAudioPlayer(IVoicePlayer player)
         {
             _audioPlayer = player;
         }
 
-        public void Prepare()
+        public void SetClock(ITaskClock clock)
         {
-            IsComplete = false;
-            IsSkip = false;
-            IsDoing = false;
+            Clock = clock ?? TaskClocks.Scaled;
+        }
+
+        public virtual void Prepare()
+        {
+            Outcome = TaskOutcome.Pending;
+            Clock = TaskClocks.Scaled;
         }
 
         public abstract void StartTask();
@@ -44,8 +48,7 @@ namespace Framework.Tasks
 
         public virtual void Skip()
         {
-            IsSkip = true;
-            MarkComplete();
+            MarkSkipped();
         }
 
         public virtual void CancelTask()
@@ -54,13 +57,22 @@ namespace Framework.Tasks
 
         protected void MarkComplete()
         {
+            Finish(TaskOutcome.Completed);
+        }
+
+        protected void MarkSkipped()
+        {
+            Finish(TaskOutcome.Skipped);
+        }
+
+        private void Finish(TaskOutcome outcome)
+        {
             if (IsComplete)
             {
                 return;
             }
 
-            IsComplete = true;
-            IsDoing = false;
+            Outcome = outcome;
             Completed?.Invoke();
         }
     }

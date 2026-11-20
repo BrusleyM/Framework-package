@@ -1,16 +1,15 @@
-using System.Collections;
 using System.Collections.Generic;
 using Framework.Audio;
 using UnityEngine;
 
 namespace Framework.Tasks
 {
-    public class AudioTask : Task
+    public class AudioTask : Task, IPausableTask, IGuidanceOnlyTask
     {
         [SerializeField]
         private List<MyClip> _audioClips = new List<MyClip>();
 
-        private Coroutine _playback;
+        private int _nextClipIndex;
 
         public override void StartTask()
         {
@@ -28,7 +27,18 @@ namespace Framework.Tasks
                 return;
             }
 
-            _playback = StartCoroutine(PlayClipsOneAfterAnother());
+            _nextClipIndex = 0;
+            PlayNextClipOrComplete();
+        }
+
+        public virtual void PauseTask()
+        {
+            _audioPlayer?.Pause(this);
+        }
+
+        public virtual void ResumeTask()
+        {
+            _audioPlayer?.Resume(this);
         }
 
         public override void Skip()
@@ -39,29 +49,21 @@ namespace Framework.Tasks
 
         public override void CancelTask()
         {
-            if (_playback != null)
-            {
-                StopCoroutine(_playback);
-                _playback = null;
-            }
-
-            _audioPlayer?.Stop();
+            _audioPlayer?.Stop(this);
         }
 
-        private IEnumerator PlayClipsOneAfterAnother()
+        private void PlayNextClipOrComplete()
         {
-            foreach (var clip in _audioClips)
+            while (_nextClipIndex < _audioClips.Count)
             {
-                if (clip == null)
+                var clip = _audioClips[_nextClipIndex++];
+                if (clip != null && clip.clip != null)
                 {
-                    continue;
+                    _audioPlayer.Play(clip.clip, this, PlayNextClipOrComplete);
+                    return;
                 }
-
-                _audioPlayer.LoadAndPlay(clip.clip);
-                yield return new WaitWhile(() => _audioPlayer.IsPlaying());
             }
 
-            _playback = null;
             TaskComplete();
         }
     }

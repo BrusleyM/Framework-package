@@ -177,6 +177,59 @@ class PackageCheckTests(unittest.TestCase):
 
         self.assertEqual([], check_package.find_missing_metas(self.root))
 
+    def write_manifest(self, samples):
+        (self.root / "package.json").write_text(json.dumps({"name": "x", "samples": samples}))
+
+    def test_a_listed_sample_that_exists_has_no_problems(self):
+        (self.root / "Samples~" / "Showcase").mkdir(parents=True)
+        self.write_manifest([{"displayName": "Showcase", "description": "d", "path": "Samples~/Showcase"}])
+
+        self.assertEqual([], check_package.find_sample_problems(self.root))
+
+    def test_a_sample_entry_without_a_name_description_or_path_is_reported(self):
+        self.write_manifest([{"displayName": "Showcase"}])
+
+        self.assertEqual(
+            ["package.json samples entry 0 has no description", "package.json samples entry 0 has no path"],
+            check_package.find_sample_problems(self.root),
+        )
+
+    def test_a_sample_path_that_is_not_a_folder_is_reported(self):
+        self.write_manifest([{"displayName": "S", "description": "d", "path": "Samples~/Missing"}])
+
+        self.assertEqual(["package.json sample path Samples~/Missing is not a folder"], check_package.find_sample_problems(self.root))
+
+    def test_a_samples_folder_that_is_not_listed_is_reported(self):
+        (self.root / "Samples~" / "Hidden").mkdir(parents=True)
+        self.write_manifest([])
+
+        self.assertEqual(["Samples~/Hidden is not listed in the package.json samples"], check_package.find_sample_problems(self.root))
+
+    def test_a_sample_path_outside_samples_is_reported(self):
+        self.write_manifest([{"displayName": "S", "description": "d", "path": "../Elsewhere"}])
+
+        self.assertEqual(["package.json sample path ../Elsewhere must be a folder inside Samples~"], check_package.find_sample_problems(self.root))
+
+    def test_a_sample_file_without_a_meta_file_is_reported(self):
+        folder = self.root / "Samples~" / "Showcase"
+        folder.mkdir(parents=True)
+        (folder / "Lost.cs").write_text("x")
+        self.write_manifest([{"displayName": "Showcase", "description": "d", "path": "Samples~/Showcase"}])
+
+        self.assertEqual(["Samples~/Showcase/Lost.cs has no .meta file, so it is probably ignored by git"], check_package.find_sample_problems(self.root))
+
+    def test_a_manifest_with_null_samples_has_no_sample_problems(self):
+        (self.root / "package.json").write_text(json.dumps({"name": "x", "samples": None}))
+
+        self.assertEqual([], check_package.find_sample_problems(self.root))
+
+    def test_samples_left_at_the_package_root_are_reported(self):
+        (self.root / "Samples").mkdir()
+        self.write_manifest([])
+
+        self.assertEqual(1, len(check_package.find_sample_problems(self.root)))
+        self.assertIn("move it to Samples~", check_package.find_sample_problems(self.root)[0])
+
     def test_a_meta_file_without_its_asset_is_reported(self):
         (self.root / "Gone.cs.meta").write_text("guid: " + "b" * 32 + "\n")
 
@@ -229,6 +282,22 @@ class PackageCheckTests(unittest.TestCase):
         self.assertTrue(any("displayName" in problem for problem in problems))
         self.assertTrue(any("not a semantic version" in problem for problem in problems))
 
+    def test_a_manifest_without_a_readable_required_core_version_is_reported(self):
+        for manifest in ({}, {"requiresCore": "^1.2"}, {"requiresCore": "latest"}, {"requiresCore": 1.2}, {"requiresCore": None, "dependencies": None}):
+            self.assertEqual(
+                ["package.json requiresCore must be the core version this package needs, like 1.2.0"],
+                check_package.find_core_requirement_problems(manifest),
+            )
+
+    def test_a_manifest_with_a_required_core_version_has_no_core_problems(self):
+        self.assertEqual([], check_package.find_core_requirement_problems({"requiresCore": "1.2.0"}))
+
+    def test_declaring_core_as_a_dependency_is_reported_because_unity_cannot_resolve_it(self):
+        problems = check_package.find_core_requirement_problems({"requiresCore": "1.2.0", "dependencies": {"com.vishnu.framework.core": "1.2.0"}})
+
+        self.assertEqual(1, len(problems))
+        self.assertIn("use requiresCore", problems[0])
+
     def test_a_release_check_needs_the_changelog_section_of_the_manifest_version(self):
         (self.root / "CHANGELOG.md").write_text("# Changelog\n\n## [Unreleased]\n\n- x\n")
 
@@ -267,6 +336,51 @@ class HostProjectTests(unittest.TestCase):
             self.assertTrue((project / "Assets").is_dir())
 
 
+class ImportSamplesTests(unittest.TestCase):
+    def test_the_samples_are_copied_into_the_host_project_like_the_package_manager_does(self):
+        with tempfile.TemporaryDirectory() as folder:
+            package = pathlib.Path(folder) / "package"
+            (package / "Samples~" / "Showcase").mkdir(parents=True)
+            (package / "Samples~" / "Showcase" / "a.cs").write_text("a")
+            (package / "package.json").write_text(json.dumps({
+                "displayName": "Framework Sequencer",
+                "version": "3.2.0",
+                "samples": [{"displayName": "Showcase", "description": "d", "path": "Samples~/Showcase"}],
+            }))
+            project = package / ".host"
+
+            imported = create_host_project.import_samples(project, package)
+
+            expected = project / "Assets" / "Samples" / "Framework Sequencer" / "3.2.0" / "Showcase"
+            self.assertEqual([expected], imported)
+            self.assertEqual("a", (expected / "a.cs").read_text())
+
+    def test_a_package_without_samples_imports_nothing(self):
+        with tempfile.TemporaryDirectory() as folder:
+            package = pathlib.Path(folder)
+            (package / "package.json").write_text(json.dumps({"displayName": "X", "version": "1.0.0"}))
+
+            self.assertEqual([], create_host_project.import_samples(package / ".host", package))
+
+
+    def test_two_samples_with_the_same_display_name_are_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            package = pathlib.Path(folder)
+            (package / "Samples~" / "A").mkdir(parents=True)
+            (package / "Samples~" / "B").mkdir(parents=True)
+            (package / "package.json").write_text(json.dumps({
+                "displayName": "X",
+                "version": "1.0.0",
+                "samples": [
+                    {"displayName": "Same", "description": "d", "path": "Samples~/A"},
+                    {"displayName": "Same", "description": "d", "path": "Samples~/B"},
+                ],
+            }))
+
+            with self.assertRaises(ValueError):
+                create_host_project.import_samples(package / ".host", package)
+
+
 class TestResultsTests(unittest.TestCase):
     def write_results(self, folder, name, total, failed):
         path = pathlib.Path(folder) / name
@@ -290,6 +404,13 @@ class TestResultsTests(unittest.TestCase):
             files = [self.write_results(folder, "editmode-results.xml", 0, 0)]
 
             self.assertEqual(["editmode-results.xml: no tests ran"], check_test_results.find_problems(files))
+
+    def test_a_result_file_that_is_not_valid_xml_is_reported_instead_of_crashing(self):
+        with tempfile.TemporaryDirectory() as folder:
+            broken = pathlib.Path(folder) / "editmode-results.xml"
+            broken.write_text("<test-run")
+
+            self.assertEqual(["editmode-results.xml: could not be read as test results"], check_test_results.find_problems([broken]))
 
     def test_missing_result_files_are_reported(self):
         self.assertEqual(["No test result files were found."], check_test_results.find_problems([]))

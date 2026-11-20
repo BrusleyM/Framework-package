@@ -5,16 +5,20 @@ namespace Framework.Sequencing
 {
     public sealed class TaskStep : StepBase
     {
-        private readonly AudioPlayer _audioPlayer;
+        private readonly IVoicePlayer _audioPlayer;
+        private readonly ITaskClock _clock;
         private bool _taskCompletedButStillSettling;
 
-        public TaskStep(Task task, AudioPlayer audioPlayer) : base(task.TaskName)
+        public TaskStep(Task task, IVoicePlayer audioPlayer, ITaskClock clock = null) : base(task.TaskName)
         {
             Task = task;
             _audioPlayer = audioPlayer;
+            _clock = clock;
         }
 
         public Task Task { get; }
+
+        private bool IsTaskSettling => (Task as ISettlingTask)?.IsSettling ?? false;
 
         protected override void OnEnter()
         {
@@ -22,12 +26,23 @@ namespace Framework.Sequencing
             Task.Completed += OnTaskCompleted;
             Task.Prepare();
             Task.SetAudioPlayer(_audioPlayer);
+            Task.SetClock(_clock);
             Task.StartTask();
+        }
+
+        protected override void OnPause()
+        {
+            (Task as IPausableTask)?.PauseTask();
+        }
+
+        protected override void OnResume()
+        {
+            (Task as IPausableTask)?.ResumeTask();
         }
 
         protected override void OnAdvance(float deltaSeconds)
         {
-            if (_taskCompletedButStillSettling && !Task.IsSettling)
+            if (_taskCompletedButStillSettling && !IsTaskSettling)
             {
                 Finish();
             }
@@ -45,11 +60,11 @@ namespace Framework.Sequencing
             switch (reason)
             {
                 case ExitReason.Completed:
-                    Task.OnCompleteTask.Invoke();
+                    SafeEvents.Invoke(Task.OnCompleteTask, Task);
                     break;
                 case ExitReason.Skipped:
                     Task.Skip();
-                    Task.OnCompleteTask.Invoke();
+                    SafeEvents.Invoke(Task.OnCompleteTask, Task);
                     break;
                 default:
                     Task.CancelTask();
@@ -59,7 +74,7 @@ namespace Framework.Sequencing
 
         private void OnTaskCompleted()
         {
-            if (Task.IsSettling)
+            if (IsTaskSettling)
             {
                 _taskCompletedButStillSettling = true;
                 return;

@@ -5,6 +5,10 @@ namespace Framework.Tasks
 {
     public abstract class GameObjectTask : MonoBehaviour
     {
+        [SerializeField]
+        private bool _isSetup;
+
+        public bool IsSetup => _isSetup;
         public bool IsComplete { get; private set; }
 
         public event Action Completed;

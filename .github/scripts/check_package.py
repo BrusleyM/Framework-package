@@ -102,6 +102,53 @@ def find_manifest_problems(package_root):
         release_tools.parse_version(manifest.get("version", ""))
     except release_tools.ReleaseError as problem:
         problems.append(str(problem))
+    problems += find_core_requirement_problems(manifest)
+    return problems
+
+
+def find_core_requirement_problems(manifest):
+    problems = []
+    required = manifest.get("requiresCore")
+    try:
+        release_tools.parse_version(required if isinstance(required, str) else "")
+    except release_tools.ReleaseError:
+        problems.append("package.json requiresCore must be the core version this package needs, like 1.2.0")
+    if "com.vishnu.framework.core" in (manifest.get("dependencies") or {}):
+        problems.append("package.json lists com.vishnu.framework.core under dependencies, which Unity cannot resolve from git: use requiresCore")
+    return problems
+
+
+def find_sample_problems(package_root):
+    manifest = json.loads((package_root / "package.json").read_text())
+    problems = []
+    listed = set()
+    for index, sample in enumerate(manifest.get("samples") or []):
+        for field in ("displayName", "description", "path"):
+            if not sample.get(field):
+                problems.append(f"package.json samples entry {index} has no {field}")
+        path = sample.get("path")
+        if path:
+            listed.add(path)
+            if not path.startswith("Samples~/") or ".." in path.split("/"):
+                problems.append(f"package.json sample path {path} must be a folder inside Samples~")
+            elif not (package_root / path).is_dir():
+                problems.append(f"package.json sample path {path} is not a folder")
+    samples_root = package_root / "Samples~"
+    if samples_root.is_dir():
+        for folder in sorted(samples_root.iterdir()):
+            if folder.is_dir() and f"Samples~/{folder.name}" not in listed:
+                problems.append(f"Samples~/{folder.name} is not listed in the package.json samples")
+        problems += find_unignored_sample_files(package_root)
+    if (package_root / "Samples").exists():
+        problems.append("Samples/ is imported into every project that installs the package: move it to Samples~ and list it in package.json")
+    return problems
+
+
+def find_unignored_sample_files(package_root):
+    problems = []
+    for file in sorted((package_root / "Samples~").rglob("*")):
+        if file.is_file() and file.suffix != ".meta" and not file.with_name(file.name + ".meta").exists():
+            problems.append(f"{file.relative_to(package_root).as_posix()} has no .meta file, so it is probably ignored by git")
     return problems
 
 
@@ -124,6 +171,7 @@ def collect_problems(package_root, require_release_section=False, dependency_roo
     problems += find_orphan_metas(package_root)
     problems += find_duplicate_guids(package_root)
     problems += find_unresolved_assembly_references(package_root, dependency_roots)
+    problems += find_sample_problems(package_root)
     if not problems:
         version = release_tools.read_package_version(package_root)
         problems += find_changelog_problems(package_root, version, require_release_section)

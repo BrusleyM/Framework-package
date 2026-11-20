@@ -9,9 +9,9 @@ namespace Framework.Sequencing.Tests
     {
         private GameObject _host;
         private SequentialTask _sequence;
-        private ProbeTask _introHello;
-        private ProbeTask _introGrab;
-        private ProbeTask _handsPoint;
+        private RecordingTask _introHello;
+        private RecordingTask _introGrab;
+        private RecordingTask _handsPoint;
 
         [SetUp]
         public void SetUp()
@@ -106,14 +106,14 @@ namespace Framework.Sequencing.Tests
             Assert.AreEqual(SequenceState.Cancelled, _sequence.Runner.State);
         }
 
-        private ProbeTask NewTask(string label)
+        private RecordingTask NewTask(string label)
         {
-            var task = _host.AddComponent<ProbeTask>();
+            var task = _host.AddComponent<RecordingTask>();
             task.Label = label;
             return task;
         }
 
-        private void AddStage(string stageName, params ProbeTask[] tasks)
+        private void AddStage(string stageName, params RecordingTask[] tasks)
         {
             var stageHost = new GameObject(stageName);
             stageHost.transform.SetParent(_host.transform);

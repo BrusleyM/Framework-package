@@ -6,7 +6,8 @@ namespace Framework.Sequencing
     public sealed class ParallelStep : StepBase
     {
         private readonly ISequenceStep[] _children;
-        private readonly bool[] _childFinished;
+        private readonly CompletionJoin<int> _join = new CompletionJoin<int>();
+        private readonly int[] _childIndexes;
         private readonly Action[] _childFinishedHandlers;
         private int _enteredChildCount;
 
@@ -21,7 +22,13 @@ namespace Framework.Sequencing
             }
 
             _children = children;
-            _childFinished = new bool[children.Length];
+            _join.AllFinished += Finish;
+            _childIndexes = new int[children.Length];
+            for (var index = 0; index < children.Length; index++)
+            {
+                _childIndexes[index] = index;
+            }
+
             _childFinishedHandlers = new Action[children.Length];
             for (var index = 0; index < children.Length; index++)
             {
@@ -32,7 +39,7 @@ namespace Framework.Sequencing
 
         protected override void OnEnter()
         {
-            Array.Clear(_childFinished, 0, _childFinished.Length);
+            _join.Begin(_childIndexes);
             _enteredChildCount = 0;
 
             for (var index = 0; index < _children.Length; index++)
@@ -47,14 +54,14 @@ namespace Framework.Sequencing
                 _children[index].Enter();
             }
 
-            FinishWhenEveryChildFinished();
+            _join.Release();
         }
 
         protected override void OnAdvance(float deltaSeconds)
         {
             for (var index = 0; index < _children.Length && IsWaiting; index++)
             {
-                if (!_childFinished[index])
+                if (!_join.IsFinished(index))
                 {
                     _children[index].Advance(deltaSeconds);
                 }
@@ -79,6 +86,7 @@ namespace Framework.Sequencing
 
         protected override void OnExit(ExitReason reason)
         {
+            _join.Stop();
             for (var index = 0; index < _children.Length; index++)
             {
                 _children[index].Finished -= _childFinishedHandlers[index];
@@ -90,7 +98,7 @@ namespace Framework.Sequencing
             {
                 try
                 {
-                    _children[index].Exit(_childFinished[index] ? ExitReason.Completed : reason);
+                    _children[index].Exit(_join.IsFinished(index) ? ExitReason.Completed : reason);
                 }
                 catch (Exception failure)
                 {
@@ -106,26 +114,7 @@ namespace Framework.Sequencing
 
         private void OnChildFinished(int childIndex)
         {
-            _childFinished[childIndex] = true;
-            FinishWhenEveryChildFinished();
-        }
-
-        private void FinishWhenEveryChildFinished()
-        {
-            if (_enteredChildCount < _children.Length)
-            {
-                return;
-            }
-
-            foreach (var hasFinished in _childFinished)
-            {
-                if (!hasFinished)
-                {
-                    return;
-                }
-            }
-
-            Finish();
+            _join.Finish(childIndex);
         }
     }
 }

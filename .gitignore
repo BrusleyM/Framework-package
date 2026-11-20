@@ -76,3 +76,7 @@ Assets/Local/WorkShop/Workshop/Workshop.unitypackage.meta
 .github/scripts/__pycache__/
 .host/
 !.github/core-tests/core-tests.csproj
+
+# Package samples live in a folder ending with ~, which a global "*~" rule would ignore
+!Samples~/
+!Samples~/**

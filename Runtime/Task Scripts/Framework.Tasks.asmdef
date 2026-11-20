@@ -1,7 +1,10 @@
 {
     "name": "Framework.Tasks",
     "rootNamespace": "Framework.Tasks",
-    "references": ["Framework.Audio","Framework.CheckPoints","Framework.Outline"],
+    "references": [
+        "Framework.Audio",
+        "Framework.Sequencing.Core"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

@@ -27,18 +27,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Choose the core ref (the development branch, or the released tag for a release)
+        id: coreref
+        env:
+          RELEASE_FLAG: ${{ (github.base_ref == 'master' || github.ref == 'refs/heads/master') && '--release' || '' }}
+        run: |
+          ref="$(python3 .github/scripts/core_ref.py ${RELEASE_FLAG:+"$RELEASE_FLAG"})"
+          test -n "$ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
       - name: Check out the core package
         uses: actions/checkout@v4
         with:
           repository: BrusleyM/Framework-core
-          ref: v1.0.0
+          ref: ${{ steps.coreref.outputs.ref }}
           path: .core
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Test the CI tooling
         working-directory: .github/scripts
-        run: python -m unittest test_release_tools
+        run: python -m unittest discover -p "test_*.py"
       - name: Check manifest, meta files, assembly references and changelog
         run: python .github/scripts/check_package.py --dependency-root .core
       - name: On a pull request into master, require the changelog section of the release
@@ -90,11 +98,19 @@ jobs:
             exit 1
           fi
       - uses: actions/checkout@v4
+      - name: Choose the core ref (the development branch, or the released tag for a release)
+        id: coreref
+        env:
+          RELEASE_FLAG: ${{ (github.base_ref == 'master' || github.ref == 'refs/heads/master') && '--release' || '' }}
+        run: |
+          ref="$(python3 .github/scripts/core_ref.py ${RELEASE_FLAG:+"$RELEASE_FLAG"})"
+          test -n "$ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
       - name: Check out the core package
         uses: actions/checkout@v4
         with:
           repository: BrusleyM/Framework-core
-          ref: v1.0.0
+          ref: ${{ steps.coreref.outputs.ref }}
           path: .core
       - uses: actions/setup-python@v5
         with:
@@ -106,12 +122,12 @@ jobs:
           --unity "${{ matrix.unity }}"
           --urp "${{ matrix.urp }}"
           --test-framework "${{ matrix.testFramework }}"
+          --import-samples
           ${{ matrix.interactionToolkit != '' && format('--xr-interaction-toolkit "{0}"', matrix.interactionToolkit) || '' }}
       - uses: actions/cache@v4
         with:
           path: .host/Library
-          key: Library-${{ matrix.unity }}-${{ matrix.interactionToolkit }}-${{ hashFiles('.host/Packages/manifest.json') }}
-          restore-keys: Library-${{ matrix.unity }}-${{ matrix.interactionToolkit }}-
+          key: Library-${{ matrix.unity }}-${{ matrix.interactionToolkit }}-${{ hashFiles('.host/Packages/manifest.json', 'package.json', 'Runtime/**', 'Editor/**', 'Tests/**', 'Samples~/**', '.core/package.json', '.core/Runtime/**', '.core/Editor/**', '.core/Tests/**', '.core/Samples~/**') }}
       - name: Run EditMode and PlayMode tests
         id: tests
         continue-on-error: true
@@ -123,6 +139,7 @@ jobs:
           projectPath: .host
           unityVersion: ${{ matrix.unity }}
           testMode: all
+          cliVersion: v0.1.76
           artifactsPath: test-results~
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: Unity ${{ matrix.name }} test results

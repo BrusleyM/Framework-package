@@ -7,11 +7,12 @@ A reusable sequencing framework for Unity. Tell a guided flow, such as a tutoria
 | Assembly | Depends on | Purpose |
 |---|---|---|
 | `Framework.Sequencing.Core` | nothing, no engine references | `SequenceRunner`, steps, builder. Time is supplied by the caller. |
-| `Framework.Sequencing.Unity` | Core, Tasks, Audio | `SequentialTask` runner component, `TaskStep`, signal and collider conditions, `WaitForConditionTask` |
+| `Framework.Sequencing.Unity` | Core, Tasks, Audio, `Framework.Timing` from the core package | `SequentialTask` runner component, `TaskStep`, signal and collider conditions, `WaitForConditionTask` |
 | `Framework.Sequencing.Unity.Editor` | Core, Unity | Editor only. The `SequentialTask` inspector: previous, current and next stage and step, and developer controls. |
 | `Framework.Sequencing.Xr` | Core, XR Interaction Toolkit 3.x | `InteractableCondition`. Compiles only when XRI 3.x is installed (version define `FRAMEWORK_XR_INTERACTION_TOOLKIT`). |
-| `Framework.Tasks` | Audio, and `Framework.CheckPoints` and `Framework.Outline` from `com.vishnu.framework.core` | Scene-authored `Task` components |
-| `Framework.Audio` | | Narration playback for tasks. |
+| `Framework.Tasks` | Audio | Scene-authored `Task` components that need nothing from the core package: `Task`, `GuidedTask` (audio, reminders, subtasks, hints, pause, with the completion left to the subclass), `AudioTask`, subtasks. Derive from `GuidedTask` for a task that completes some other way, such as a quiz answer. |
+| `Framework.Tasks.Interaction` | Tasks, `Framework.CheckPoints` and `Framework.Outline` from `com.vishnu.framework.core` | The tasks that use check points and outlines: `ActionTask` (a `GuidedTask` that completes when all its check points are checked), `TrackCheckPoint` and the highlight subtasks. |
+| `Framework.Audio` | | `IVoicePlayer` (narration with owners), `AudioPlayer` (on an `AudioSource`), `ManualVoicePlayer` (no audio device, for tests). |
 
 Requires Unity 2022.3 or newer and the Universal Render Pipeline.
 
@@ -80,6 +81,16 @@ On the outer runner, `SkipCurrentStep` skips the whole running stage (its curren
 
 In a scene, add a `TaskStage` component per stage, list its tasks, and list the stages on `SequentialTask`. When any stage is listed they replace the plain task list. `SkipCurrentTask` and `GoBack` move within the current stage, and `SkipCurrentStage`, `GoBackStage` and `RestartCurrentStage` move between stages. `CurrentStageName` and `CurrentStageIndex` say where the player is.
 
+## Running things together
+
+"Run these together" is said in three places, and they all join through one class, `CompletionJoin` (it finishes once every member has finished, and can be held while the members are still being started):
+
+- In a sequence, `ParallelStep` (the builder's `Together`) runs steps together and finishes when all did.
+- For tasks the player may do in any order, `UnguidedStep` starts every task and adds the hint, the completion order and the settling.
+- Inside a guided task, `ParallelSubtask` runs subtasks together.
+
+`StageStep` is not one of them: it nests a sequence that runs in order. Write a new "wait for all" with `CompletionJoin` instead of tracking finished flags yourself.
+
 ## Steps that wait for the player
 
 A condition implements `IStepCondition`: it is armed when the step starts and disarmed when the step ends, whatever the reason. A condition may be satisfied synchronously while arming.
@@ -87,6 +98,62 @@ A condition implements `IStepCondition`: it is armed when the step starts and di
 - `SignalCondition`: call `Raise()` from any `UnityEvent`. Hand pose events and button events plug in here. Signals raised while it is not armed are ignored, not remembered.
 - `ColliderContactCondition`: satisfied when a collider on an accepted layer touches this one, including contact that already exists. It accepts no layers until you choose them.
 - `InteractableCondition` (XRI 3.x): satisfied on hover or select, or on activate, of an interactable. It also completes at once if the interactable is already hovered or selected. Whether activate fires depends on your interaction profile, so select is the reliable choice for pokes and grabs.
+
+## Unguided mode
+
+A `SequentialTask` has a Mode dropdown, Guided or Unguided, and uses the same task list for both. Guided walks the user through the tasks one at a time. Unguided starts every task at once, so the user can do them in any order, with no audio, reminders or highlights, and the sequence completes when every task is done.
+
+A task's check points never force an order: an `ActionTask` completes when all its check points are checked, in any order. What changes in unguided mode is how the tasks are scheduled and what guidance runs:
+
+- A subtask has an Is Setup tick. Setup subtasks (such as enabling the box a block snaps onto) run in both modes. Guidance subtasks (highlights) run in guided mode, and in unguided mode only when a hint is asked for.
+- A hint is only shown when asked for: call `RequestHint()` on the sequence (for example from a button or a UnityEvent), or set Hint After Idle Seconds to hint by itself after that long without progress. It shows the hint of the first open task and is taken down when that task finishes.
+- Tasks that only give guidance, such as `AudioTask`, are skipped in unguided mode.
+- The order the tasks were finished in is available as `CompletionOrder` and reported as it happens (`UnguidedTaskCompleted` with the task and its 1-based position, `UnguidedCompleted` with whether it matched the list order). That is useful when order matters. The tasks' own feedback audio is not played in unguided mode.
+- Changing the mode while playing (the dropdown or `SetMode`) restarts the sequence in the new mode on the next frame, keeping a pause. A sequence started with `Play(runner)` is cancelled, not rebuilt. `SkipCurrentTask` in unguided mode skips the whole unguided step (every open task, running their complete events), and skipping a task reverts what its subtasks changed, including the setup ones.
+- A hint goes to the first open task that has one (a task that implements `IHintable`; an `ActionTask` does).
+
+`Intro Audio` and `Complete Audio` on the `SequentialTask` play in both modes: the intro once when the sequence is run (`Run()` plays it; `Restart()` and a mode switch do not), the complete audio after the last task. The intro is its own short run before the tasks start, so the mode that applies is the one set when it ends. Changing the mode during the intro lets it finish by default, and cuts it and starts the tasks at once when Allow Cutting Intro is ticked. While they play, `CurrentStageIndex` is -1. Use them instead of an audio task at the start and a feedback clip on the last task. A custom task opts in by implementing the capability interfaces it needs: `IUnguidedTask` (start without guidance), `IHintable` (show and hide a hint), `IPausableTask`, `ISettlingTask` (still playing its own audio after completing: `TaskStep` waits for it before moving on) and the marker `IGuidanceOnlyTask` (skipped in unguided mode). `Task` itself only has start, complete, skip, cancel and prepare; a task that implements none of them is started normally in unguided mode and is never hinted or paused. A subclass of `GuidedTask` or `AudioTask` customises these by overriding their virtual members (`ShowHint`, `HideHint`, `StartTaskUnguided`, `PauseTask`, `ResumeTask`, `IsSettling`).
+
+## Time
+
+The sequence runs on game time: `Time.deltaTime` drives its delays and the idle hint, and a guided task's reminders wait with `WaitForSeconds`, so `Time.timeScale = 0` stops them. The voice-over is an `AudioSource`, which the time scale does not affect. Tick Ignore Time Scale on the `SequentialTask` (`IgnoreTimeScale`) to run the sequence, the idle hint and the reminders on real time instead, for example when a pause menu sets the time scale to zero and the guidance should go on. It is off by default. Pausing the sequence with `Pause()` is separate and always works. The option is read when the sequence is built, so changing it during a run applies from the next `Run()` or `Restart()`. It covers the sequence's own timing; a custom task that waits should use `Clock.WaitFor(seconds)` (the `Task.Clock` the sequence set), while animations and your own timers stay on game time.
+
+## Errors
+
+Two rules decide what happens when something throws:
+
+- When a step cannot do its job (a task without check points, a missing Outline or condition, a step bug) it throws or raises `Failed`. The sequence stops in the `Faulted` state, raises `Faulted` once and `SequentialTask` logs it.
+- Code the sequencer does not control is isolated: the `On Complete Task` events wired in the inspector are invoked through core's `SafeEvents`, so a listener that throws is logged with the task as context and the sequence goes on. C# events used inside the package (a task's `Completed`, a step's `Finished`) are not isolated, because a failing internal subscriber must fault the sequence.
+
+## Audio
+
+Narration goes through an `IVoicePlayer`. Every clip is played for an owner (the task or step that asked for it), and only the owner can stop, pause or resume it, so one task can no longer cut another's audio. Playing for a new owner replaces what was playing, and the replaced owner's finished callback is dropped.
+
+- `Play(clip, owner, onFinished)`: the callback is raised once when the clip ends, not when it is stopped. `AudioTask` and `AudioStep` chain their clips with it, so nothing waits on `isPlaying` any more.
+- `Stop(owner)`, `Pause(owner)`, `Resume(owner)` act only on the owner's audio; `IsPlayingFor(owner)` tells a task whether its own audio is still playing (that is what `ISettlingTask.IsSettling` reports). `StopAll()` is for the host.
+- `AudioPlayer` is the implementation on an `AudioSource` (the `SequentialTask` creates one from its Audio Source). It adds a hidden component that checks for the end of the clip only while something is playing, and does not treat a clip as finished while the application is unfocused.
+- `SequentialTask.UseVoicePlayer(player)` swaps the player. `ManualVoicePlayer` plays nothing and finishes a clip when you call `FinishCurrent()`, so audio logic can be tested without an audio device.
+- Only one `AudioPlayer` works per `AudioSource`: creating a second one for the same source takes over and the first goes quiet. If something other than the step or task calls `StopAll()` or plays for another owner while an `AudioStep` or `AudioTask` is mid-chain, that chain's callback is dropped and it will not finish, so only the host should do that, and then cancel the sequence.
+- A custom task plays with `_audioPlayer.Play(clip, this, onFinished)` and stops with `_audioPlayer.Stop(this)`.
+
+## Setup checks
+
+Some ticks change behaviour silently, for example an `EnableTask` that is not marked Is Setup never runs in unguided mode, so the box it should switch on stays hidden. The setup is checked in three places:
+
+- The inspector of a `SequentialTask` shows each problem as a warning box above the fields, and a `GuidedTask` (so also `ActionTask`) shows its own mode-independent problems under its header (this uses `Editor.finishedDefaultHeaderGUI`, so it does not replace your own inspectors).
+- `SequentialTask.Run()` and a mode change while playing log them as warnings in the editor and in development builds. The sequence's list includes the problems of its guided tasks, prefixed with the task's name, checked for the sequence's current mode.
+- The menu item Tools > Framework > Check sequence setup lists the problems of every sequence and guided task in the open scenes.
+
+`SequentialTask.GetSetupIssues()` and `GuidedTask.GetSetupIssues()` return the same list from code. What is checked:
+
+| Where | Problem |
+|---|---|
+| Sequence | empty task list; an empty entry in the task list or the stages; a task listed twice; a stage without tasks; Intro or Complete Audio with clips but no Audio Source |
+| Sequence, unguided mode | a task that does not implement `IUnguidedTask`; only guidance tasks; an `EnableTask` subtask that is not marked Is Setup; Hint After Idle Seconds set but no task can hint |
+| Guided task | an empty subtask entry; Reminder Interval without Instruction Audio; in unguided mode only, a hint that would show and play nothing (no Instruction Audio and no subtask without Is Setup) |
+| Action task | no check points assigned; in unguided mode only, a highlight subtask marked Is Setup |
+
+A custom `GuidedTask` adds its own checks by overriding `GetCompletionSetupIssues(bool forUnguidedMode)`. `GuidedTask.GetSetupIssues(forUnguidedMode)` only reports the hint and highlight problems when asked for unguided mode, because a hint only exists there. When stages are listed, the plain task list is ignored (as at run time) and the unguided checks run per stage.
 
 ## Build a sequence in the editor
 
@@ -100,13 +167,13 @@ No code is needed to author a sequence. Everything is a component you add and wi
 
 `Run()` does nothing while a sequence is in progress, and starts over once it has ended. `Play(runner)` cancels the current runner first. `Pause`, `Resume`, `SkipCurrentTask`, `GoBack`, `Restart` and `Cancel` act on the running sequence. The component must be active and enabled to run.
 
-The Test scene at `Samples/Scenes/Test scene.unity` is built this way. Open it and select the object that holds the `SequentialTask` to see a working task list.
+The Test scene sample (see Sample) is built this way. Open it and select the object that holds the `SequentialTask` to see a working task list.
 
 ## Developer inspector
 
 In play mode the `SequentialTask` inspector shows the sequence state, the previous, current and next stage and step, and buttons for Back, Skip and Restart (per stage), Pause, Resume, Restart and Cancel. It updates on step and state events. It is editor only and adds nothing to builds. `StepWindow.Of(runner)` gives the same previous, current and next names to your own tools.
 
-The Test scene lives at `Samples/Scenes/Test scene.unity`. The `Samples` folder is imported and compiled with the package; it is not offered as a Package Manager sample.
+The Test scene is the optional Package Manager sample (see Sample).
 
 ## Write your own step
 
@@ -125,16 +192,29 @@ public sealed class ShowHintStep : StepBase
 
 Call `Finish()` from any event handler to complete the step, or `Fail(exception)` to fault the sequence. Override `OnPause` and `OnResume` if the step has its own timers or audio to hold. `OnExit` runs on every exit path (completed, skipped, rewound, restarted, cancelled), so clean up there.
 
+## Sample
+
+The Test scene is an optional sample (a Robot instructor, snap points, check points, highlights, guided and unguided mode, and the tests of its robot follow rules). It does not install with the package: import it in the Package Manager (select Framework Sequencer, open the Samples tab, press Import) and it is copied to `Assets/Samples/Framework Sequencer/<version>/Test scene`. When the package is a folder inside Assets (a submodule, for example) Unity does not list its samples, so use Tools > Framework > Import sequencer samples, which copies it to `Assets/Samples/Framework Sequencer/Test scene`. The scene needs the core package. Open `Scenes/Test scene.unity` from the imported folder.
+
 ## Installation
 
-Install core first, then the sequencer, both by git URL in Package Manager. Unity does not resolve git-URL dependencies, so installing the sequencer alone fails with `Package [com.vishnu.framework.core@1.0.0] cannot be found`.
+Install core first, then the sequencer, both by git URL in Package Manager. Unity does not resolve git-URL dependencies, so the sequencer does not list core under `dependencies` (that made installing it alone fail with `Package [com.vishnu.framework.core@1.0.0] cannot be found`). It states the core version it needs in `requiresCore` in `package.json` instead, and the editor logs a warning when the installed core is older.
 
-1. `https://github.com/BrusleyM/Framework-core.git#v1.0.0`
-2. `https://github.com/BrusleyM/Framework-package.git#v3.0.1`
+| Sequencer | Needs core |
+|---|---|
+| next release (after 3.1.0) | 1.2.0 or newer |
+| 3.1.0 and 3.0.1 | 1.0.0 (as declared in their `package.json`) |
+
+1. `https://github.com/BrusleyM/Framework-core.git#v1.2.0`
+2. `https://github.com/BrusleyM/Framework-package.git#vX.Y.Z` (the sequencer release from the table)
+
+The warning is shown once per editor session. A core older than 1.2.0 has no `Framework.Core.Editor` assembly, so with it the sequencer's editor code shows compile errors instead of the warning: update core. Release core before the sequencer release that needs it, because the release CI tests against the core tag in `requiresCore`.
+
+The package check fails if `requiresCore` is missing or core is listed under `dependencies`, and a release is tested against the core tag in `requiresCore`.
 
 ## Tests
 
-`Tests/Editor` holds EditMode tests for the core, the task adapter and the conditions. `Tests/PlayMode` runs `SequentialTask` in play mode with tasks built in code. Keep the package under `Assets`, or add it to `testables`, to run them.
+`Tests/Editor` holds EditMode tests for the core, the task adapter and the conditions. `Tests/PlayMode` runs `SequentialTask` in play mode with tasks built in code. Keep the package under `Assets`, or add it to `testables`, to run them. `Tests/Support` is the shared test kit (`Framework.Sequencing.TestSupport`): `RecordingTask`, `PlainTask`, `GuidanceOnlyTask`, `ManualSubtask`, `ThrowingSubtask` and `Await.Until`, which waits for a condition with a timeout. Use it instead of a fixed `WaitForSeconds` when a test waits for something to happen; a fixed wait is only right to show that nothing happens.
 
 ## Continuous integration and releases
 
