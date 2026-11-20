@@ -5,7 +5,8 @@
         "Framework.Sequencing.Core",
         "Framework.Tasks",
         "Framework.Audio",
-        "Framework.Timing"
+        "Framework.Timing",
+        "Framework.Tools"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

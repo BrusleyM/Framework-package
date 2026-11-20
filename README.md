@@ -114,6 +114,13 @@ A task's check points never force an order: an `ActionTask` completes when all i
 
 `Intro Audio` and `Complete Audio` on the `SequentialTask` play in both modes: the intro once when the sequence is run (`Run()` plays it; `Restart()` and a mode switch do not), the complete audio after the last task. The intro is its own short run before the tasks start, so the mode that applies is the one set when it ends. Changing the mode during the intro lets it finish by default, and cuts it and starts the tasks at once when Allow Cutting Intro is ticked. While they play, `CurrentStageIndex` is -1. Use them instead of an audio task at the start and a feedback clip on the last task. A custom task opts in by implementing the capability interfaces it needs: `IUnguidedTask` (start without guidance), `IHintable` (show and hide a hint), `IPausableTask`, `ISettlingTask` (still playing its own audio after completing: `TaskStep` waits for it before moving on) and the marker `IGuidanceOnlyTask` (skipped in unguided mode). `Task` itself only has start, complete, skip, cancel and prepare; a task that implements none of them is started normally in unguided mode and is never hinted or paused. A subclass of `GuidedTask` or `AudioTask` customises these by overriding their virtual members (`ShowHint`, `HideHint`, `StartTaskUnguided`, `PauseTask`, `ResumeTask`, `IsSettling`).
 
+## Errors
+
+Two rules decide what happens when something throws:
+
+- When a step cannot do its job (a task without check points, a missing Outline or condition, a step bug) it throws or raises `Failed`. The sequence stops in the `Faulted` state, raises `Faulted` once and `SequentialTask` logs it.
+- Code the sequencer does not control is isolated: the `On Complete Task` events wired in the inspector are invoked through core's `SafeEvents`, so a listener that throws is logged with the task as context and the sequence goes on. C# events used inside the package (a task's `Completed`, a step's `Finished`) are not isolated, because a failing internal subscriber must fault the sequence.
+
 ## Audio
 
 Narration goes through an `IVoicePlayer`. Every clip is played for an owner (the task or step that asked for it), and only the owner can stop, pause or resume it, so one task can no longer cut another's audio. Playing for a new owner replaces what was playing, and the replaced owner's finished callback is dropped.

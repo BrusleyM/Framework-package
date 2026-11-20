@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Framework.Tasks;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Framework.Sequencing.Tests
 {
@@ -114,6 +115,25 @@ namespace Framework.Sequencing.Tests
             Assert.That(step.PositionOf(_second), Is.EqualTo(0));
             Assert.That(step.CompletedCount, Is.EqualTo(1));
             Assert.That(step.OpenCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void A_complete_listener_that_throws_is_logged_and_the_other_tasks_are_still_reported()
+        {
+            var reported = new List<Task>();
+            var step = NewStep();
+            var allCompleted = 0;
+            step.TaskCompleted += (task, position) => reported.Add(task);
+            step.AllTasksCompleted += inListedOrder => allCompleted++;
+            _first.OnCompleteTask.AddListener(() => throw new System.InvalidOperationException("broken listener"));
+            step.Enter();
+
+            LogAssert.Expect(LogType.Exception, new System.Text.RegularExpressions.Regex("broken listener"));
+            _first.Finish();
+            _second.Finish();
+
+            Assert.That(reported, Is.EqualTo(new List<Task> { _first, _second }));
+            Assert.That(allCompleted, Is.EqualTo(1));
         }
 
         [Test]
@@ -390,6 +410,19 @@ namespace Framework.Sequencing.Tests
             step.Exit(ExitReason.Skipped);
 
             Assert.That(raised, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void A_complete_listener_that_throws_while_the_step_is_skipped_is_logged_and_the_skip_goes_on()
+        {
+            _second.OnCompleteTask.AddListener(() => throw new System.InvalidOperationException("broken listener"));
+            var step = EnterStep();
+            _first.Finish();
+
+            LogAssert.Expect(LogType.Exception, new System.Text.RegularExpressions.Regex("broken listener"));
+            step.Exit(ExitReason.Skipped);
+
+            Assert.That(_second.IsSkip, Is.True);
         }
 
         [Test]

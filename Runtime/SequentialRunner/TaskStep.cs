@@ -57,11 +57,11 @@ namespace Framework.Sequencing
             switch (reason)
             {
                 case ExitReason.Completed:
-                    Task.OnCompleteTask.Invoke();
+                    SafeEvents.Invoke(Task.OnCompleteTask, Task);
                     break;
                 case ExitReason.Skipped:
                     Task.Skip();
-                    Task.OnCompleteTask.Invoke();
+                    SafeEvents.Invoke(Task.OnCompleteTask, Task);
                     break;
                 default:
                     Task.CancelTask();
