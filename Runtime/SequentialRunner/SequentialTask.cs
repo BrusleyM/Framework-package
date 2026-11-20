@@ -84,14 +84,14 @@ namespace Framework.Sequencing
 
         public void Play(SequenceRunner runner)
         {
-            Start(runner, cameFromTaskList: false, isIntro: false);
+            StartRunner(runner, cameFromTaskList: false, isIntro: false);
         }
 
         private void PlayIntro()
         {
             var intro = new SequenceRunner(IntroStepName, new ISequenceStep[] { new AudioStep(IntroStepName, _introAudio, ObtainAudioPlayer()) });
             intro.Completed += () => PlayTasksWhenIntroEnds(intro);
-            Start(intro, cameFromTaskList: true, isIntro: true);
+            StartRunner(intro, cameFromTaskList: true, isIntro: true);
         }
 
         private void PlayTasksWhenIntroEnds(SequenceRunner intro)
@@ -104,10 +104,10 @@ namespace Framework.Sequencing
 
         private void PlayTaskList()
         {
-            Start(BuildRunnerFromTaskList(), cameFromTaskList: true, isIntro: false);
+            StartRunner(BuildRunnerFromTaskList(), cameFromTaskList: true, isIntro: false);
         }
 
-        private void Start(SequenceRunner runner, bool cameFromTaskList, bool isIntro)
+        private void StartRunner(SequenceRunner runner, bool cameFromTaskList, bool isIntro)
         {
             if (!isActiveAndEnabled)
             {
