@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+- Unguided sequences: `FreeGroupTask` runs its tasks in any order with no guidance, and completes when every task is done. Put it in a `SequentialTask` (or a stage) like any other task, so a guided part can be followed by a free part. Nothing is highlighted or played until a hint is asked for: call `RequestHint()` (from code or a UnityEvent) to show the hint of the first open task, or set Hint After Idle Seconds to hint by itself after that long without progress (finishing a task restarts the wait, and a task that is already hinted is not hinted again). Events: `OnTaskCompleted` (with the task) and `OnHintShown`. Skip skips every open task and cancel cancels them.
+- `Task.StartTaskUnguided()`, `ShowHint()` and `HideHint()`. By default an unguided start is a normal start and a hint does nothing, so existing tasks work in a free group unchanged. `ActionTask` overrides them: an unguided start only listens for its check points, and a hint plays the instruction audio and runs the subtasks (the highlights), which are cancelled again when the task completes or the hint is hidden. The guided `StartTask` is unchanged.
+
 ### Fixed
 - In the Test sample scene the checkpoint boxes Cube (3) and Last (1) no longer have a Rigidbody, like First (1). With one, the block pushed the box (and its snap point) away before and during the snap, and a box overlapping a snapped block drifted off its place, so a snapped block ended up to 3 m from the authored checkpoint position. All three blocks now snap exactly onto their checkpoints.
 

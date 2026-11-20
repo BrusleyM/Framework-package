@@ -37,6 +37,19 @@ namespace Framework.Tasks
 
         public abstract void StartTask();
 
+        public virtual void StartTaskUnguided()
+        {
+            StartTask();
+        }
+
+        public virtual void ShowHint()
+        {
+        }
+
+        public virtual void HideHint()
+        {
+        }
+
         public virtual void TaskComplete()
         {
             MarkComplete();
