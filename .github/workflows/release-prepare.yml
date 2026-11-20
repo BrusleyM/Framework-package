@@ -28,7 +28,10 @@ jobs:
           fetch-depth: 0
       - name: Choose the core ref (the development branch, or the released tag for a release)
         id: coreref
-        run: echo "ref=$(python3 .github/scripts/core_ref.py --release)" >> "$GITHUB_OUTPUT"
+        run: |
+          ref="$(python3 .github/scripts/core_ref.py --release)"
+          test -n "$ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
       - name: Check out the core package
         uses: actions/checkout@v4
         with:

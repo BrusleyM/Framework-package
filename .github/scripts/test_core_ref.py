@@ -1,3 +1,5 @@
+import contextlib
+import io
 import json
 import pathlib
 import sys
@@ -44,11 +46,22 @@ class CoreRefTests(unittest.TestCase):
             root = pathlib.Path(folder)
             (root / "package.json").write_text(json.dumps({"dependencies": {"com.vishnu.framework.core": "1.2.0"}}))
 
-            self.assertEqual(0, core_ref.main(["--release"], root))
+            printed = io.StringIO()
+            with contextlib.redirect_stdout(printed):
+                status = core_ref.main(["--release"], root)
+            self.assertEqual(0, status)
+            self.assertEqual("v1.2.0", printed.getvalue().strip())
+
+            printed = io.StringIO()
+            with contextlib.redirect_stdout(printed):
+                development = core_ref.main([], root)
+            self.assertEqual(0, development)
+            self.assertEqual("develop", printed.getvalue().strip())
 
             (root / "package.json").write_text(json.dumps({"dependencies": {}}))
 
-            self.assertEqual(1, core_ref.main(["--release"], root))
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(1, core_ref.main(["--release"], root))
 
 
 if __name__ == "__main__":
