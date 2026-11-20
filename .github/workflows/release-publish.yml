@@ -18,11 +18,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Choose the core ref (the development branch, or the released tag for a release)
+        id: coreref
+        run: echo "ref=$(python3 .github/scripts/core_ref.py --release)" >> "$GITHUB_OUTPUT"
       - name: Check out the core package
         uses: actions/checkout@v4
         with:
           repository: BrusleyM/Framework-core
-          ref: v1.0.0
+          ref: ${{ steps.coreref.outputs.ref }}
           path: .core
       - uses: actions/setup-python@v5
         with:

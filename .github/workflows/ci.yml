@@ -27,18 +27,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Choose the core ref (the development branch, or the released tag for a release)
+        id: coreref
+        run: echo "ref=$(python3 .github/scripts/core_ref.py ${{ (github.base_ref == 'master' || github.ref == 'refs/heads/master') && '--release' || '' }})" >> "$GITHUB_OUTPUT"
       - name: Check out the core package
         uses: actions/checkout@v4
         with:
           repository: BrusleyM/Framework-core
-          ref: v1.0.0
+          ref: ${{ steps.coreref.outputs.ref }}
           path: .core
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Test the CI tooling
         working-directory: .github/scripts
-        run: python -m unittest test_release_tools
+        run: python -m unittest discover -p "test_*.py"
       - name: Check manifest, meta files, assembly references and changelog
         run: python .github/scripts/check_package.py --dependency-root .core
       - name: On a pull request into master, require the changelog section of the release
@@ -90,11 +93,14 @@ jobs:
             exit 1
           fi
       - uses: actions/checkout@v4
+      - name: Choose the core ref (the development branch, or the released tag for a release)
+        id: coreref
+        run: echo "ref=$(python3 .github/scripts/core_ref.py ${{ (github.base_ref == 'master' || github.ref == 'refs/heads/master') && '--release' || '' }})" >> "$GITHUB_OUTPUT"
       - name: Check out the core package
         uses: actions/checkout@v4
         with:
           repository: BrusleyM/Framework-core
-          ref: v1.0.0
+          ref: ${{ steps.coreref.outputs.ref }}
           path: .core
       - uses: actions/setup-python@v5
         with:
