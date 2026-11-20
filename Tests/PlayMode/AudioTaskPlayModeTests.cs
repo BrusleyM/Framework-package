@@ -60,7 +60,7 @@ namespace Framework.Sequencing.Tests
             yield return new WaitForSeconds(0.3f);
 
             _task.ResumeTask();
-            yield return new WaitForSeconds(1.5f);
+            yield return Await.Until(() => _task.IsComplete, "the resumed audio task completes");
 
             Assert.That(_task.IsComplete, Is.True);
         }

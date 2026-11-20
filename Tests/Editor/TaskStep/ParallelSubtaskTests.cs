@@ -321,38 +321,5 @@ namespace Framework.Sequencing.Tests
             serialized.FindProperty("gameObjectToEnable").objectReferenceValue = target;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
-
-        private sealed class ThrowingSubtask : GameObjectTask
-        {
-            public override void Execute()
-            {
-                throw new System.InvalidOperationException("missing reference");
-            }
-        }
-
-        private sealed class ManualSubtask : GameObjectTask
-        {
-            public int ExecuteCount { get; private set; }
-            public int CancelCount { get; private set; }
-            public System.Action OnExecute { get; set; }
-            public System.Action OnCancel { get; set; }
-
-            public override void Execute()
-            {
-                ExecuteCount++;
-                OnExecute?.Invoke();
-            }
-
-            public override void Cancel()
-            {
-                CancelCount++;
-                OnCancel?.Invoke();
-            }
-
-            public void Finish()
-            {
-                MarkComplete();
-            }
-        }
     }
 }

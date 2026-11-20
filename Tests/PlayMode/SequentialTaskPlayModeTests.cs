@@ -58,8 +58,7 @@ namespace Framework.Sequencing.Tests
             Assert.AreEqual(SequenceState.Paused, _sequence.Runner.State);
 
             _sequence.Resume();
-            yield return new WaitForSeconds(0.5f);
-            Assert.AreEqual(SequenceState.Completed, _sequence.Runner.State);
+            yield return Await.Until(() => _sequence.Runner.State == SequenceState.Completed, "the resumed timed step completes");
         }
 
         [UnityTest]
@@ -106,15 +105,13 @@ namespace Framework.Sequencing.Tests
         public IEnumerator Restarting_a_finished_sequence_keeps_it_ticking_so_it_finishes_again()
         {
             _sequence.Play(Sequence.Named("timed").Wait(0.1f).Build());
-            yield return new WaitForSeconds(0.4f);
-            Assert.AreEqual(SequenceState.Completed, _sequence.Runner.State);
+            yield return Await.Until(() => _sequence.Runner.State == SequenceState.Completed, "the timed step completes");
 
             _sequence.Restart();
             yield return null;
             Assert.AreEqual(SequenceState.Running, _sequence.Runner.State);
 
-            yield return new WaitForSeconds(0.4f);
-            Assert.AreEqual(SequenceState.Completed, _sequence.Runner.State);
+            yield return Await.Until(() => _sequence.Runner.State == SequenceState.Completed, "the restarted timed step completes again");
         }
 
         [UnityTest]
@@ -170,7 +167,7 @@ namespace Framework.Sequencing.Tests
             var first = AddTask("first");
             var second = AddTask("second");
             var reports = new List<string>();
-            _sequence.UnguidedTaskCompleted += (task, position) => reports.Add(position + ":" + ((ProbeTask)task).Label);
+            _sequence.UnguidedTaskCompleted += (task, position) => reports.Add(position + ":" + ((RecordingTask)task).Label);
             _sequence.SetMode(GuidanceMode.Unguided);
             _sequence.Run();
             yield return null;
@@ -228,7 +225,7 @@ namespace Framework.Sequencing.Tests
         [UnityTest]
         public IEnumerator A_guidance_only_task_such_as_audio_is_left_out_in_unguided_mode()
         {
-            var guidance = _host.AddComponent<GuidanceOnlyProbeTask>();
+            var guidance = _host.AddComponent<GuidanceOnlyTask>();
             _sequence.AddTask(guidance);
             var real = AddTask("real");
             _sequence.SetMode(GuidanceMode.Unguided);
@@ -597,7 +594,7 @@ namespace Framework.Sequencing.Tests
         [UnityTest]
         public IEnumerator Switching_to_unguided_mode_logs_the_problems_of_that_mode()
         {
-            _sequence.AddTask(_host.AddComponent<GuidanceOnlyProbeTask>());
+            _sequence.AddTask(_host.AddComponent<GuidanceOnlyTask>());
             _sequence.Run();
             yield return null;
             LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("nothing to run"));
@@ -607,12 +604,12 @@ namespace Framework.Sequencing.Tests
             yield return null;
         }
 
-        private ProbeTask AddStageWithTask(string stageName)
+        private RecordingTask AddStageWithTask(string stageName)
         {
             var stageObject = new GameObject(stageName);
             stageObject.transform.SetParent(_host.transform);
             var stage = stageObject.AddComponent<TaskStage>();
-            var task = stageObject.AddComponent<ProbeTask>();
+            var task = stageObject.AddComponent<RecordingTask>();
             task.Label = stageName;
             stage.AddTask(task);
             _sequence.AddStage(stage);
@@ -638,9 +635,9 @@ namespace Framework.Sequencing.Tests
             return new MyClip { name = name, clip = clip };
         }
 
-        private ProbeTask AddTask(string taskName)
+        private RecordingTask AddTask(string taskName)
         {
-            var task = _host.AddComponent<ProbeTask>();
+            var task = _host.AddComponent<RecordingTask>();
             task.Label = taskName;
             _sequence.AddTask(task);
             return task;

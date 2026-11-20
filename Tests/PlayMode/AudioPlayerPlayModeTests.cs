@@ -74,7 +74,7 @@ namespace Framework.Sequencing.Tests
             yield return new WaitForSeconds(0.6f);
             var finishedWhilePaused = finished;
             _player.Resume(_owner);
-            yield return new WaitForSeconds(0.6f);
+            yield return Await.Until(() => finished == 1, "the resumed clip finishes");
 
             Assert.That(finishedWhilePaused, Is.EqualTo(0));
             Assert.That(finished, Is.EqualTo(1));
@@ -89,7 +89,7 @@ namespace Framework.Sequencing.Tests
             yield return null;
 
             _player.Play(Clip(0.2f), _other, () => secondFinished++);
-            yield return new WaitForSeconds(0.7f);
+            yield return Await.Until(() => secondFinished == 1, "the replacing clip finishes");
 
             Assert.That(firstFinished, Is.EqualTo(0));
             Assert.That(secondFinished, Is.EqualTo(1));

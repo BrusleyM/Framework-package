@@ -283,25 +283,5 @@ namespace Framework.Sequencing.Tests
                 AfterCompleting?.Invoke();
             }
         }
-
-        private sealed class ThrowingSubtask : GameObjectTask
-        {
-            public override void Execute()
-            {
-                throw new System.InvalidOperationException("missing reference");
-            }
-        }
-
-        private sealed class ManualSubtask : GameObjectTask
-        {
-            public override void Execute()
-            {
-            }
-
-            public void Finish()
-            {
-                MarkComplete();
-            }
-        }
     }
 }

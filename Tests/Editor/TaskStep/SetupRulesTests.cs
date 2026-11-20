@@ -94,7 +94,7 @@ namespace Framework.Sequencing.Tests
         [Test]
         public void Unguided_mode_with_only_guidance_tasks_has_nothing_to_run()
         {
-            _sequence.AddTask(_host.AddComponent<GuidanceTask>());
+            _sequence.AddTask(_host.AddComponent<GuidanceOnlyTask>());
             _sequence.SetMode(GuidanceMode.Unguided);
 
             Assert.That(Messages(_sequence), Has.Some.Contain("nothing to run"));
@@ -210,7 +210,7 @@ namespace Framework.Sequencing.Tests
         [Test]
         public void A_stage_that_only_has_guidance_tasks_is_reported_in_unguided_mode_even_when_other_stages_have_work()
         {
-            _sequence.AddStage(NewStage("welcome", _host.AddComponent<GuidanceTask>()));
+            _sequence.AddStage(NewStage("welcome", _host.AddComponent<GuidanceOnlyTask>()));
             _sequence.AddStage(NewStage("work", _host.AddComponent<UnguidedOnlyTask>()));
             _sequence.SetMode(GuidanceMode.Unguided);
 
@@ -330,20 +330,6 @@ namespace Framework.Sequencing.Tests
         private static MyClip Clip()
         {
             return new MyClip { name = "clip", clip = AudioClip.Create("clip", 100, 1, 44100, false) };
-        }
-
-        private sealed class PlainTask : Task
-        {
-            public override void StartTask()
-            {
-            }
-        }
-
-        private sealed class GuidanceTask : Task, IGuidanceOnlyTask
-        {
-            public override void StartTask()
-            {
-            }
         }
 
         private sealed class UnguidedOnlyTask : Task, IUnguidedTask
