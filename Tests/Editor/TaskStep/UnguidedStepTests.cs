@@ -41,12 +41,39 @@ namespace Framework.Sequencing.Tests
         [Test]
         public void Tasks_that_only_give_guidance_are_left_out()
         {
-            _second.GuidanceOnly = true;
+            var guidance = _host.AddComponent<GuidanceOnlyTask>();
+            var step = new UnguidedStep("free", new Task[] { _first, guidance }, null);
 
-            var step = EnterStep();
+            step.Enter();
 
             Assert.That(step.Tasks, Is.EqualTo(new List<Task> { _first }));
-            Assert.That(_second.UnguidedStartCount, Is.EqualTo(0));
+            Assert.That(guidance.StartCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void A_task_without_the_unguided_capability_is_started_normally()
+        {
+            var plain = _host.AddComponent<PlainTask>();
+            var step = new UnguidedStep("free", new Task[] { plain }, null);
+
+            step.Enter();
+
+            Assert.That(plain.StartCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Pausing_and_resuming_a_step_with_a_task_that_cannot_pause_does_nothing_to_it_and_does_not_throw()
+        {
+            var plain = _host.AddComponent<PlainTask>();
+            var step = new UnguidedStep("free", new Task[] { plain, _first }, null);
+            step.Enter();
+
+            Assert.DoesNotThrow(() =>
+            {
+                step.Pause();
+                step.Resume();
+            });
+            Assert.That(_first.PauseCount, Is.EqualTo(1));
         }
 
         [Test]
@@ -386,22 +413,23 @@ namespace Framework.Sequencing.Tests
         [Test]
         public void A_task_without_a_hint_of_its_own_is_passed_over_when_a_hint_is_requested()
         {
-            _first.NoHint = true;
-            var step = EnterStep();
+            var plain = _host.AddComponent<PlainTask>();
+            var step = new UnguidedStep("free", new Task[] { plain, _second }, null);
+            step.Enter();
 
             var shown = step.RequestHint();
 
             Assert.That(shown, Is.True);
-            Assert.That(_first.HintShowCount, Is.EqualTo(0));
             Assert.That(_second.HintShowCount, Is.EqualTo(1));
         }
 
         [Test]
         public void A_hint_request_when_no_open_task_has_a_hint_shows_nothing()
         {
-            _first.NoHint = true;
-            _second.NoHint = true;
-            var step = EnterStep();
+            var plainOne = _host.AddComponent<PlainTask>();
+            var plainTwo = _host.AddComponent<PlainTask>();
+            var step = new UnguidedStep("free", new Task[] { plainOne, plainTwo }, null);
+            step.Enter();
 
             Assert.That(step.RequestHint(), Is.False);
         }
@@ -463,7 +491,7 @@ namespace Framework.Sequencing.Tests
             return step;
         }
 
-        private sealed class HintableTask : Task
+        private sealed class HintableTask : Task, IUnguidedTask, IHintable, IPausableTask, ISettlingTask
         {
             public int GuidedStartCount { get; private set; }
             public int UnguidedStartCount { get; private set; }
@@ -474,18 +502,14 @@ namespace Framework.Sequencing.Tests
             public int ResumeCount { get; private set; }
             public bool FinishWhenStarted { get; set; }
             public bool Settling { get; set; }
-            public bool GuidanceOnly { get; set; }
 
-            public override bool IsSettling => Settling;
-            public override bool IsGuidanceOnly => GuidanceOnly;
-            public override bool HasHint => !NoHint;
-            public bool NoHint { get; set; }
+            public bool IsSettling => Settling;
 
             public void Finish() => TaskComplete();
 
             public override void StartTask() => GuidedStartCount++;
 
-            public override void StartTaskUnguided()
+            public void StartTaskUnguided()
             {
                 UnguidedStartCount++;
                 if (FinishWhenStarted)
@@ -496,13 +520,27 @@ namespace Framework.Sequencing.Tests
 
             public override void CancelTask() => CancelCount++;
 
-            public override void PauseTask() => PauseCount++;
+            public void PauseTask() => PauseCount++;
 
-            public override void ResumeTask() => ResumeCount++;
+            public void ResumeTask() => ResumeCount++;
 
-            public override void ShowHint() => HintShowCount++;
+            public void ShowHint() => HintShowCount++;
 
-            public override void HideHint() => HintHideCount++;
+            public void HideHint() => HintHideCount++;
+        }
+
+        private sealed class PlainTask : Task
+        {
+            public int StartCount { get; private set; }
+
+            public override void StartTask() => StartCount++;
+        }
+
+        private sealed class GuidanceOnlyTask : Task, IGuidanceOnlyTask
+        {
+            public int StartCount { get; private set; }
+
+            public override void StartTask() => StartCount++;
         }
     }
 }
