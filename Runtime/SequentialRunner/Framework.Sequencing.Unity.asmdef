@@ -4,7 +4,8 @@
     "references": [
         "Framework.Sequencing.Core",
         "Framework.Tasks",
-        "Framework.Audio"
+        "Framework.Audio",
+        "Framework.Timing"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
