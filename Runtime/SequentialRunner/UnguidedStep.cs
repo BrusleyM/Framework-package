@@ -146,7 +146,7 @@ namespace Framework.Sequencing
                 if (reason == ExitReason.Skipped)
                 {
                     task.Skip();
-                    task.OnCompleteTask.Invoke();
+                    SafeEvents.Invoke(task.OnCompleteTask, task);
                 }
                 else
                 {
@@ -240,7 +240,7 @@ namespace Framework.Sequencing
             }
 
             _idleTimer?.Restart();
-            task.OnCompleteTask.Invoke();
+            SafeEvents.Invoke(task.OnCompleteTask, task);
             TaskCompleted?.Invoke(task, PositionOf(task));
         }
 

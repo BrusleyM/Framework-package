@@ -1,6 +1,7 @@
 using Framework.Tasks;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Framework.Sequencing.Tests
 {
@@ -47,6 +48,31 @@ namespace Framework.Sequencing.Tests
 
             Assert.AreEqual(SequenceState.Completed, _runner.State);
             Assert.AreEqual(1, _completeEventCount);
+        }
+
+        [Test]
+        public void A_complete_listener_that_throws_is_logged_and_the_sequence_still_completes()
+        {
+            _task.OnCompleteTask.AddListener(() => throw new System.InvalidOperationException("broken listener"));
+            _runner.Start();
+
+            LogAssert.Expect(LogType.Exception, new System.Text.RegularExpressions.Regex("broken listener"));
+            _task.CompleteFromOutside();
+
+            Assert.AreEqual(SequenceState.Completed, _runner.State);
+        }
+
+        [Test]
+        public void A_complete_listener_that_throws_while_the_step_is_skipped_is_logged_and_the_task_is_skipped()
+        {
+            _task.OnCompleteTask.AddListener(() => throw new System.InvalidOperationException("broken listener"));
+            _runner.Start();
+
+            LogAssert.Expect(LogType.Exception, new System.Text.RegularExpressions.Regex("broken listener"));
+            _runner.SkipCurrentStep();
+
+            Assert.AreEqual(1, _task.SkipCount);
+            Assert.AreEqual(SequenceState.Completed, _runner.State);
         }
 
         [Test]
