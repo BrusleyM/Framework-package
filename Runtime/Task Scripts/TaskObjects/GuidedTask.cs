@@ -16,17 +16,65 @@ namespace Framework.Tasks
         private GameObjectTask[] _subTasks;
 
         private Coroutine _reminderRoutine;
-        private int _subTaskIndex;
-        private bool _isAdvancingSubtasks;
-        private bool _advanceRequested;
-        private bool _isShowingHint;
-        private bool _isUnguided;
-        private bool _runsGuidanceOnly;
+        private SubtaskSequencer _sequencer;
+        private GameObjectTask[] _sequencerSource;
         private bool _isPaused;
 
-        public GameObjectTask CurrentSubtask { get; private set; }
+        public GuidanceState State { get; private set; }
+        public GameObjectTask CurrentSubtask => _sequencer?.Current;
         public override bool IsSettling => IsFeedbackAudioPlaying();
         public override bool HasHint => true;
+
+        private SubtaskSequencer Subtasks
+        {
+            get
+            {
+                if (_sequencer == null || !ReferenceEquals(_sequencerSource, _subTasks))
+                {
+                    _sequencerSource = _subTasks;
+                    _sequencer = new SubtaskSequencer(_subTasks);
+                }
+
+                return _sequencer;
+            }
+        }
+
+        public override void StartTask()
+        {
+            Restart(GuidanceState.Guided);
+            PlayInstructionalAudio();
+            StartReminder();
+            Subtasks.Start(SubtaskFilter.All);
+        }
+
+        public override void StartTaskUnguided()
+        {
+            Restart(GuidanceState.Unguided);
+            Subtasks.RunSetup();
+        }
+
+        public override void ShowHint()
+        {
+            if (State != GuidanceState.Unguided)
+            {
+                return;
+            }
+
+            State = GuidanceState.Hinting;
+            PlayInstructionalAudio();
+            Subtasks.Start(SubtaskFilter.GuidanceOnly);
+        }
+
+        public override void HideHint()
+        {
+            if (State != GuidanceState.Hinting)
+            {
+                return;
+            }
+
+            StopHint();
+            _audioPlayer?.Stop();
+        }
 
         public override void PauseTask()
         {
@@ -40,92 +88,52 @@ namespace Framework.Tasks
             _audioPlayer?.Resume();
         }
 
-        public override void StartTaskUnguided()
-        {
-            _isPaused = false;
-            StopEverythingInProgress();
-            _isShowingHint = false;
-            _isUnguided = true;
-            BeginCompletionTracking();
-            RunSetupSubTasks();
-        }
-
-        public override void ShowHint()
-        {
-            if (IsComplete || _isShowingHint)
-            {
-                return;
-            }
-
-            _isShowingHint = true;
-            _runsGuidanceOnly = true;
-            PlayInstructionalAudio();
-            StartSubTasks();
-        }
-
-        public override void HideHint()
-        {
-            if (!_isShowingHint)
-            {
-                return;
-            }
-
-            StopShowingHint();
-            _audioPlayer?.Stop();
-        }
-
-        public override void StartTask()
-        {
-            _isUnguided = false;
-            _runsGuidanceOnly = false;
-            _isPaused = false;
-            _isShowingHint = false;
-            StopEverythingInProgress();
-            BeginCompletionTracking();
-            PlayInstructionalAudio();
-            StartReminder();
-            StartSubTasks();
-        }
-
         public override void TaskComplete()
         {
-            if (IsComplete)
+            if (State == GuidanceState.Completed || IsComplete)
             {
                 return;
             }
 
-            StopEverythingInProgress();
-            if (_isShowingHint)
+            var wasGuided = State == GuidanceState.Guided;
+            var wasHinting = State == GuidanceState.Hinting;
+            StopWatching();
+            if (wasHinting)
             {
-                StopShowingHint();
+                Subtasks.TearDown(SubtaskFilter.GuidanceOnly);
                 _audioPlayer?.Stop();
             }
 
-            PlayFeedbackAudio();
+            State = GuidanceState.Completed;
+            if (wasGuided)
+            {
+                PlayFeedbackAudio();
+            }
+
             MarkComplete();
         }
 
         public override void Skip()
         {
-            if (IsComplete)
+            if (State == GuidanceState.Completed || IsComplete)
             {
                 return;
             }
 
             IsSkip = true;
-            StopEverythingInProgress();
-            _isShowingHint = false;
+            StopWatching();
+            State = GuidanceState.Completed;
             _audioPlayer?.Stop();
-            TearDownSubTasks();
+            Subtasks.TearDown(SubtaskFilter.All);
             MarkComplete();
         }
 
         public override void CancelTask()
         {
-            StopEverythingInProgress();
-            _isShowingHint = false;
+            StopWatching();
+            State = GuidanceState.Idle;
             _audioPlayer?.Stop();
-            TearDownSubTasks();
+            Subtasks.TearDown(SubtaskFilter.All);
             ResetCompletionTracking();
             IsDoing = false;
         }
@@ -135,55 +143,42 @@ namespace Framework.Tasks
             return _audioPlayer?.IsPlaying() ?? false;
         }
 
-        private void OnDisable()
-        {
-            StopEverythingInProgress();
-            StopShowingHint();
-        }
-
-        private void StopShowingHint()
-        {
-            if (!_isShowingHint)
-            {
-                return;
-            }
-
-            _isShowingHint = false;
-            DetachFromCurrentSubTask();
-            _advanceRequested = false;
-            TearDownSubTasks(guidanceOnly: true);
-        }
-
-        private void RunSetupSubTasks()
-        {
-            if (_subTasks == null)
-            {
-                return;
-            }
-
-            foreach (var subTask in _subTasks)
-            {
-                if (subTask != null && subTask.IsSetup)
-                {
-                    subTask.Prepare();
-                    subTask.Execute();
-                }
-            }
-        }
-
-        private void StopEverythingInProgress()
-        {
-            StopReminder();
-            EndCompletionTracking();
-            DetachFromCurrentSubTask();
-            _advanceRequested = false;
-        }
-
         protected abstract void BeginCompletionTracking();
 
         protected abstract void EndCompletionTracking();
 
         protected abstract void ResetCompletionTracking();
+
+        private void OnDisable()
+        {
+            StopWatching();
+            if (State == GuidanceState.Hinting)
+            {
+                StopHint();
+            }
+        }
+
+        private void Restart(GuidanceState newState)
+        {
+            _isPaused = false;
+            StopWatching();
+            State = newState;
+            BeginCompletionTracking();
+        }
+
+        private void StopWatching()
+        {
+            StopReminder();
+            EndCompletionTracking();
+            Subtasks.Stop();
+        }
+
+        private void StopHint()
+        {
+            State = GuidanceState.Unguided;
+            Subtasks.Stop();
+            Subtasks.TearDown(SubtaskFilter.GuidanceOnly);
+        }
 
         private void PlayInstructionalAudio()
         {
@@ -192,7 +187,7 @@ namespace Framework.Tasks
 
         private void PlayFeedbackAudio()
         {
-            if (!IsSkip && !_isUnguided && _feedbackAudioClip != null)
+            if (!IsSkip && _feedbackAudioClip != null)
             {
                 _audioPlayer?.LoadAndPlay(_feedbackAudioClip.clip);
             }
@@ -224,87 +219,6 @@ namespace Framework.Tasks
                 if (!IsComplete && !_isPaused)
                 {
                     PlayInstructionalAudio();
-                }
-            }
-        }
-
-        private void StartSubTasks()
-        {
-            _subTaskIndex = -1;
-            StartNextSubTask();
-        }
-
-        private void StartNextSubTask()
-        {
-            if (_isAdvancingSubtasks)
-            {
-                _advanceRequested = true;
-                return;
-            }
-
-            _isAdvancingSubtasks = true;
-            try
-            {
-                do
-                {
-                    _advanceRequested = false;
-                    StartTheNextListedSubTask();
-                }
-                while (_advanceRequested);
-            }
-            finally
-            {
-                _isAdvancingSubtasks = false;
-                _advanceRequested = false;
-            }
-        }
-
-        private void StartTheNextListedSubTask()
-        {
-            DetachFromCurrentSubTask();
-            do
-            {
-                _subTaskIndex++;
-            }
-            while (_subTasks != null && _subTaskIndex < _subTasks.Length && !IsRunnableNow(_subTasks[_subTaskIndex]));
-
-            if (_subTasks == null || _subTaskIndex >= _subTasks.Length)
-            {
-                CurrentSubtask = null;
-                return;
-            }
-
-            CurrentSubtask = _subTasks[_subTaskIndex];
-            CurrentSubtask.Prepare();
-            CurrentSubtask.Completed += StartNextSubTask;
-            CurrentSubtask.Execute();
-        }
-
-        private bool IsRunnableNow(GameObjectTask subTask)
-        {
-            return subTask != null && !(_runsGuidanceOnly && subTask.IsSetup);
-        }
-
-        private void DetachFromCurrentSubTask()
-        {
-            if (CurrentSubtask != null)
-            {
-                CurrentSubtask.Completed -= StartNextSubTask;
-            }
-        }
-
-        private void TearDownSubTasks(bool guidanceOnly = false)
-        {
-            if (_subTasks == null)
-            {
-                return;
-            }
-
-            for (var index = _subTasks.Length - 1; index >= 0; index--)
-            {
-                if (_subTasks[index] != null && !(guidanceOnly && _subTasks[index].IsSetup))
-                {
-                    _subTasks[index].Cancel();
                 }
             }
         }
