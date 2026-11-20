@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Framework.Audio;
+using Framework.Timing;
 using Framework.Tasks;
 
 namespace Framework.Sequencing
@@ -11,10 +12,9 @@ namespace Framework.Sequencing
         private readonly HashSet<Task> _acknowledged = new HashSet<Task>();
         private readonly List<Task> _completionOrder = new List<Task>();
         private readonly AudioPlayer _audioPlayer;
-        private readonly float _hintAfterIdleSeconds;
+        private readonly CountdownTimer _idleTimer;
 
         private Task _hintedTask;
-        private float _idleSeconds;
         private bool _isPaused;
         private bool _isStarting;
         private bool _isAllComplete;
@@ -34,7 +34,11 @@ namespace Framework.Sequencing
             }
 
             _audioPlayer = audioPlayer;
-            _hintAfterIdleSeconds = hintAfterIdleSeconds;
+            if (hintAfterIdleSeconds > 0f)
+            {
+                _idleTimer = new CountdownTimer(hintAfterIdleSeconds);
+                _idleTimer.Expired += ShowIdleHint;
+            }
         }
 
         public event Action<Task, int> TaskCompleted;
@@ -58,7 +62,7 @@ namespace Framework.Sequencing
             var shown = ShowHintOn(FirstOpenTask(), true);
             if (shown)
             {
-                _idleSeconds = 0f;
+                _idleTimer?.Restart();
             }
             return shown;
         }
@@ -68,7 +72,6 @@ namespace Framework.Sequencing
             _acknowledged.Clear();
             _completionOrder.Clear();
             _hintedTask = null;
-            _idleSeconds = 0f;
             _isPaused = false;
             _isAllComplete = false;
             _isStarting = true;
@@ -82,6 +85,10 @@ namespace Framework.Sequencing
             }
 
             CompleteWhenEveryTaskIsComplete();
+            if (!_isAllComplete)
+            {
+                _idleTimer?.Restart();
+            }
         }
 
         protected override void OnAdvance(float deltaSeconds)
@@ -92,22 +99,13 @@ namespace Framework.Sequencing
                 return;
             }
 
-            if (_hintAfterIdleSeconds <= 0f || _isPaused)
-            {
-                return;
-            }
-
-            _idleSeconds += deltaSeconds;
-            if (_idleSeconds >= _hintAfterIdleSeconds)
-            {
-                _idleSeconds = 0f;
-                ShowHintOn(FirstOpenTask(), false);
-            }
+            _idleTimer?.Advance(deltaSeconds);
         }
 
         protected override void OnPause()
         {
             _isPaused = true;
+            _idleTimer?.Pause();
             foreach (var task in _tasks)
             {
                 if (!task.IsComplete)
@@ -120,6 +118,7 @@ namespace Framework.Sequencing
         protected override void OnResume()
         {
             _isPaused = false;
+            _idleTimer?.Resume();
             foreach (var task in _tasks)
             {
                 if (!task.IsComplete)
@@ -131,6 +130,7 @@ namespace Framework.Sequencing
 
         protected override void OnExit(ExitReason reason)
         {
+            _idleTimer?.Stop();
             HideCurrentHint();
             foreach (var task in _tasks.ToArray())
             {
@@ -211,7 +211,7 @@ namespace Framework.Sequencing
                 _completionOrder.Add(task);
             }
 
-            _idleSeconds = 0f;
+            _idleTimer?.Restart();
             task.OnCompleteTask.Invoke();
             TaskCompleted?.Invoke(task, PositionOf(task));
         }
@@ -250,6 +250,7 @@ namespace Framework.Sequencing
             }
 
             _isAllComplete = true;
+            _idleTimer?.Stop();
             AllTasksCompleted?.Invoke(CompletionMatchesListedOrder());
         }
 
@@ -307,6 +308,12 @@ namespace Framework.Sequencing
                 }
             }
             return false;
+        }
+
+        private void ShowIdleHint()
+        {
+            ShowHintOn(FirstOpenTask(), false);
+            _idleTimer.Restart();
         }
 
         private bool ShowHintOn(Task task, bool replayIfAlreadyShown)
