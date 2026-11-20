@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Framework.CheckPoints;
 using UnityEngine;
 
@@ -10,6 +11,25 @@ namespace Framework.Tasks
         private CheckPointsParent _checkPoints;
 
         public CheckPointsParent CheckPointsParent => _checkPoints;
+
+        protected override IEnumerable<SetupIssue> GetCompletionSetupIssues()
+        {
+            var issues = new List<SetupIssue>();
+            if (!HasCheckPoints())
+            {
+                issues.Add(new SetupIssue("No check points are assigned, so the task can never complete."));
+            }
+
+            foreach (var subtask in SubTasks)
+            {
+                if (subtask is HighlightTask && subtask.IsSetup)
+                {
+                    issues.Add(new SetupIssue($"Subtask '{subtask.name}' is a highlight marked Is Setup, so it is shown even without a hint: untick Is Setup so it only shows when guided or on a hint."));
+                }
+            }
+
+            return issues;
+        }
 
         protected override void BeginCompletionTracking()
         {
@@ -31,6 +51,24 @@ namespace Framework.Tasks
         protected override void ResetCompletionTracking()
         {
             _checkPoints?.ResetAllPoints();
+        }
+
+        private bool HasCheckPoints()
+        {
+            if (_checkPoints == null || _checkPoints.CheckPoints == null)
+            {
+                return false;
+            }
+
+            foreach (var point in _checkPoints.CheckPoints)
+            {
+                if (point != null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void LinkCheckPointsToThisTask()

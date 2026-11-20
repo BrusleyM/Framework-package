@@ -16,6 +16,7 @@ namespace Framework.Sequencing.Editor
 
         public override void OnInspectorGUI()
         {
+            SetupIssueBoxes.Draw(((SequentialTask)target).GetSetupIssues());
             DrawDefaultInspector();
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Sequence", EditorStyles.boldLabel);

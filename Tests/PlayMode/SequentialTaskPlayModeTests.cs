@@ -573,6 +573,15 @@ namespace Framework.Sequencing.Tests
             Assert.IsNull(_sequence.CompletionOrder);
         }
 
+        [UnityTest]
+        public IEnumerator Running_a_sequence_with_a_setup_problem_logs_it_as_a_warning()
+        {
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("task list is empty"));
+
+            _sequence.Run();
+            yield return null;
+        }
+
         private ProbeTask AddStageWithTask(string stageName)
         {
             var stageObject = new GameObject(stageName);

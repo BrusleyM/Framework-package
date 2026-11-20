@@ -115,6 +115,25 @@ Narration goes through an `IVoicePlayer`. Every clip is played for an owner (the
 - Only one `AudioPlayer` works per `AudioSource`: creating a second one for the same source takes over and the first goes quiet. If something other than the step or task calls `StopAll()` or plays for another owner while an `AudioStep` or `AudioTask` is mid-chain, that chain's callback is dropped and it will not finish, so only the host should do that, and then cancel the sequence.
 - A custom task plays with `_audioPlayer.Play(clip, this, onFinished)` and stops with `_audioPlayer.Stop(this)`.
 
+## Setup checks
+
+Some ticks change behaviour silently, for example an `EnableTask` that is not marked Is Setup never runs in unguided mode, so the box it should switch on stays hidden. The setup is checked in three places:
+
+- The inspector of a `SequentialTask` and of a `GuidedTask` (so also `ActionTask`) shows each problem as a warning box above the fields.
+- `SequentialTask.Run()` logs them as warnings in the editor and in development builds.
+- The menu item Tools > Framework > Check sequence setup lists the problems of every sequence and guided task in the open scenes.
+
+`SequentialTask.GetSetupIssues()` and `GuidedTask.GetSetupIssues()` return the same list from code. What is checked:
+
+| Where | Problem |
+|---|---|
+| Sequence | empty task list; an empty entry in the task list or the stages; a task listed twice; a stage without tasks; Intro or Complete Audio with clips but no Audio Source |
+| Sequence, unguided mode | a task that does not implement `IUnguidedTask`; only guidance tasks; an `EnableTask` subtask that is not marked Is Setup; Hint After Idle Seconds set but no task can hint |
+| Guided task | an empty subtask entry; Reminder Interval without Instruction Audio; a hint that would show and play nothing (no Instruction Audio and no subtask without Is Setup) |
+| Action task | no check points assigned; a highlight subtask marked Is Setup |
+
+A custom `GuidedTask` adds its own checks by overriding `GetCompletionSetupIssues()`.
+
 ## Build a sequence in the editor
 
 No code is needed to author a sequence. Everything is a component you add and wire in the Inspector.
