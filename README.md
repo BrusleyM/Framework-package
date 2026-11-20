@@ -97,10 +97,10 @@ A task's check points never force an order: an `ActionTask` completes when all i
 - A subtask has an Is Setup tick. Setup subtasks (such as enabling the box a block snaps onto) run in both modes. Guidance subtasks (highlights) run in guided mode, and in unguided mode only when a hint is asked for.
 - A hint is only shown when asked for: call `RequestHint()` on the sequence (for example from a button or a UnityEvent), or set Hint After Idle Seconds to hint by itself after that long without progress. It shows the hint of the first open task and is taken down when that task finishes.
 - Tasks that only give guidance, such as `AudioTask`, are skipped in unguided mode.
-- The order the tasks were finished in is available as `CompletionOrder` and reported as it happens (`UnguidedTaskCompleted` with the task and its 1-based position, `UnguidedCompleted` with whether it matched the list order). That is useful when order matters. One feedback clip can play for the whole run, with an optional separate one when the order differed; the tasks' own feedback is not played in unguided mode.
+- The order the tasks were finished in is available as `CompletionOrder` and reported as it happens (`UnguidedTaskCompleted` with the task and its 1-based position, `UnguidedCompleted` with whether it matched the list order). That is useful when order matters. The tasks' own feedback audio is not played in unguided mode.
 - Changing the mode while playing (the dropdown or `SetMode`) restarts the sequence in the new mode.
 
-A custom task opts in by overriding `StartTaskUnguided`, `ShowHint`, `HideHint` and, for audio, `PauseTask` and `ResumeTask`.
+`Intro Audio` and `Complete Audio` on the `SequentialTask` play in both modes: the intro once when the sequence is run, the complete audio after the last task. Use them instead of an audio task at the start and a feedback clip on the last task. A custom task opts in by overriding `StartTaskUnguided`, `ShowHint`, `HideHint` and, for audio, `PauseTask` and `ResumeTask`.
 
 ## Build a sequence in the editor
 

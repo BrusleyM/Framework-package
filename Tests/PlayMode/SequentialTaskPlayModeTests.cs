@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
+using Framework.Audio;
 using Framework.Tasks;
 using NUnit.Framework;
 using UnityEngine;
@@ -234,6 +236,121 @@ namespace Framework.Sequencing.Tests
 
             Assert.AreEqual(0, guidance.UnguidedStartCount);
             Assert.AreEqual(1, real.UnguidedStartCount);
+        }
+
+        [UnityTest]
+        public IEnumerator The_intro_audio_plays_before_the_first_task_starts_in_either_mode()
+        {
+            var task = AddTask("only");
+            UseAudio(intro: new[] { Clip("intro", 0.3f) });
+
+            _sequence.Run();
+            yield return null;
+            var startedDuringIntro = task.StartCount;
+            yield return new WaitForSeconds(0.8f);
+
+            Assert.AreEqual(0, startedDuringIntro);
+            Assert.AreEqual(1, task.StartCount);
+        }
+
+        [UnityTest]
+        public IEnumerator The_intro_is_also_played_before_the_unguided_tasks()
+        {
+            var task = AddTask("only");
+            UseAudio(intro: new[] { Clip("intro", 0.3f) });
+            _sequence.SetMode(GuidanceMode.Unguided);
+
+            _sequence.Run();
+            yield return null;
+            var startedDuringIntro = task.UnguidedStartCount;
+            yield return new WaitForSeconds(0.8f);
+
+            Assert.AreEqual(0, startedDuringIntro);
+            Assert.AreEqual(1, task.UnguidedStartCount);
+        }
+
+        [UnityTest]
+        public IEnumerator The_complete_audio_plays_after_the_last_task_and_only_then_the_sequence_completes()
+        {
+            var task = AddTask("only");
+            UseAudio(complete: new[] { Clip("complete", 0.4f) });
+            _sequence.Run();
+            yield return null;
+
+            task.Finish();
+            yield return null;
+            var stateWhilePlaying = _sequence.Runner.State;
+            yield return new WaitForSeconds(0.9f);
+
+            Assert.AreEqual(SequenceState.Running, stateWhilePlaying);
+            Assert.AreEqual(SequenceState.Completed, _sequence.Runner.State);
+        }
+
+        [UnityTest]
+        public IEnumerator The_complete_audio_plays_after_the_unguided_tasks_are_all_done()
+        {
+            var first = AddTask("first");
+            var second = AddTask("second");
+            UseAudio(complete: new[] { Clip("complete", 0.4f) });
+            _sequence.SetMode(GuidanceMode.Unguided);
+            _sequence.Run();
+            yield return null;
+
+            second.Finish();
+            first.Finish();
+            yield return null;
+            var stateWhilePlaying = _sequence.Runner.State;
+            yield return new WaitForSeconds(0.9f);
+
+            Assert.AreEqual(SequenceState.Running, stateWhilePlaying);
+            Assert.AreEqual(SequenceState.Completed, _sequence.Runner.State);
+        }
+
+        [UnityTest]
+        public IEnumerator Switching_the_mode_while_running_does_not_play_the_intro_again()
+        {
+            var task = AddTask("only");
+            UseAudio(intro: new[] { Clip("intro", 0.2f) });
+            _sequence.Run();
+            yield return new WaitForSeconds(0.6f);
+
+            _sequence.SetMode(GuidanceMode.Unguided);
+            yield return null;
+
+            Assert.AreEqual(1, task.UnguidedStartCount);
+        }
+
+        [UnityTest]
+        public IEnumerator Without_intro_or_complete_audio_the_sequence_has_only_its_tasks()
+        {
+            AddTask("only");
+            UseAudio();
+
+            _sequence.Run();
+            yield return null;
+
+            Assert.AreEqual(1, _sequence.Runner.StepCount);
+        }
+
+        private void UseAudio(MyClip[] intro = null, MyClip[] complete = null)
+        {
+            var source = _host.AddComponent<AudioSource>();
+            Set("_audioSource", source);
+            Set("_introAudio", new List<MyClip>(intro ?? new MyClip[0]));
+            Set("_completeAudio", new List<MyClip>(complete ?? new MyClip[0]));
+        }
+
+        private void Set(string fieldName, object value)
+        {
+            typeof(SequentialTask).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(_sequence, value);
+        }
+
+        private static MyClip Clip(string name, float seconds)
+        {
+            var samples = (int)(44100 * seconds);
+            var clip = AudioClip.Create(name, samples, 1, 44100, false);
+            clip.SetData(new float[samples], 0);
+            return new MyClip { name = name, clip = clip };
         }
 
         private ProbeTask AddTask(string taskName)

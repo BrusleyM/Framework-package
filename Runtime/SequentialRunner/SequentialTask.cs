@@ -19,9 +19,9 @@ namespace Framework.Sequencing
         [SerializeField]
         private float _hintAfterIdleSeconds;
         [SerializeField]
-        private MyClip _unguidedFeedbackAudio;
+        private List<MyClip> _introAudio = new List<MyClip>();
         [SerializeField]
-        private MyClip _unguidedOutOfOrderFeedbackAudio;
+        private List<MyClip> _completeAudio = new List<MyClip>();
 
         private SequenceRunner _runner;
         private Coroutine _clock;
@@ -63,7 +63,7 @@ namespace Framework.Sequencing
                 return;
             }
 
-            Play(BuildRunnerFromTaskList());
+            Play(BuildRunnerFromTaskList(includeIntro: true));
         }
 
         public void Play(SequenceRunner runner)
@@ -96,7 +96,7 @@ namespace Framework.Sequencing
             ModeChanged?.Invoke(mode);
             if (wasRunning && isActiveAndEnabled)
             {
-                Run();
+                Play(BuildRunnerFromTaskList(includeIntro: false));
             }
         }
 
@@ -164,13 +164,46 @@ namespace Framework.Sequencing
             Cancel();
         }
 
-        private SequenceRunner BuildRunnerFromTaskList()
+        private SequenceRunner BuildRunnerFromTaskList(bool includeIntro)
         {
             var audioPlayer = ObtainAudioPlayer();
+            var steps = new List<ISequenceStep>();
+            if (includeIntro && HasClips(_introAudio, audioPlayer))
+            {
+                steps.Add(new AudioStep("Intro", _introAudio, audioPlayer));
+            }
 
+            steps.AddRange(TaskAndStageSteps(audioPlayer));
+            if (HasClips(_completeAudio, audioPlayer))
+            {
+                steps.Add(new AudioStep("Complete", _completeAudio, audioPlayer));
+            }
+
+            return new SequenceRunner(name, steps);
+        }
+
+        private static bool HasClips(List<MyClip> clips, AudioPlayer audioPlayer)
+        {
+            if (audioPlayer == null)
+            {
+                return false;
+            }
+
+            foreach (var clip in clips)
+            {
+                if (clip != null && clip.clip != null)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private List<ISequenceStep> TaskAndStageSteps(AudioPlayer audioPlayer)
+        {
             if (_stages.Count == 0)
             {
-                return new SequenceRunner(name, StepsFor(name, _taskList, audioPlayer));
+                return StepsFor(name, _taskList, audioPlayer);
             }
 
             var stageSteps = new List<ISequenceStep>();
@@ -183,7 +216,7 @@ namespace Framework.Sequencing
                 }
             }
 
-            return new SequenceRunner(name, stageSteps);
+            return stageSteps;
         }
 
         private List<ISequenceStep> StepsFor(string stepName, IEnumerable<Task> tasks, AudioPlayer audioPlayer)
@@ -191,7 +224,7 @@ namespace Framework.Sequencing
             var steps = new List<ISequenceStep>();
             if (_mode == GuidanceMode.Unguided)
             {
-                var unguided = new UnguidedStep(stepName, tasks, audioPlayer, _hintAfterIdleSeconds, _unguidedFeedbackAudio, _unguidedOutOfOrderFeedbackAudio);
+                var unguided = new UnguidedStep(stepName, tasks, audioPlayer, _hintAfterIdleSeconds);
                 unguided.TaskCompleted += (task, position) => UnguidedTaskCompleted?.Invoke(task, position);
                 unguided.AllTasksCompleted += inOrder => UnguidedCompleted?.Invoke(inOrder);
                 _lastUnguidedStep = unguided;

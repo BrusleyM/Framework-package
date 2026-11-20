@@ -11,8 +11,6 @@ namespace Framework.Sequencing
         private readonly HashSet<Task> _acknowledged = new HashSet<Task>();
         private readonly List<Task> _completionOrder = new List<Task>();
         private readonly AudioPlayer _audioPlayer;
-        private readonly MyClip _feedbackAudio;
-        private readonly MyClip _outOfOrderFeedbackAudio;
         private readonly float _hintAfterIdleSeconds;
 
         private Task _hintedTask;
@@ -20,15 +18,12 @@ namespace Framework.Sequencing
         private bool _isPaused;
         private bool _isStarting;
         private bool _isAllComplete;
-        private bool _hasPlayedFeedback;
 
         public UnguidedStep(
             string name,
             IEnumerable<Task> tasks,
             AudioPlayer audioPlayer,
-            float hintAfterIdleSeconds = 0f,
-            MyClip feedbackAudio = null,
-            MyClip outOfOrderFeedbackAudio = null) : base(name)
+            float hintAfterIdleSeconds = 0f) : base(name)
         {
             foreach (var task in tasks)
             {
@@ -40,8 +35,6 @@ namespace Framework.Sequencing
 
             _audioPlayer = audioPlayer;
             _hintAfterIdleSeconds = hintAfterIdleSeconds;
-            _feedbackAudio = feedbackAudio;
-            _outOfOrderFeedbackAudio = outOfOrderFeedbackAudio;
         }
 
         public event Action<Task, int> TaskCompleted;
@@ -78,7 +71,6 @@ namespace Framework.Sequencing
             _idleSeconds = 0f;
             _isPaused = false;
             _isAllComplete = false;
-            _hasPlayedFeedback = false;
             _isStarting = true;
             try
             {
@@ -242,29 +234,11 @@ namespace Framework.Sequencing
             }
 
             _isAllComplete = true;
-            var inOrder = CompletionMatchesListedOrder();
-            PlayFeedback(inOrder);
-            AllTasksCompleted?.Invoke(inOrder);
-        }
-
-        private void PlayFeedback(bool inOrder)
-        {
-            var useOutOfOrder = !inOrder && _outOfOrderFeedbackAudio != null && _outOfOrderFeedbackAudio.clip != null;
-            var clip = useOutOfOrder ? _outOfOrderFeedbackAudio : _feedbackAudio;
-            if (clip != null && clip.clip != null && _audioPlayer != null)
-            {
-                _audioPlayer.LoadAndPlay(clip.clip);
-                _hasPlayedFeedback = true;
-            }
+            AllTasksCompleted?.Invoke(CompletionMatchesListedOrder());
         }
 
         private void FinishWhenSettled()
         {
-            if (_hasPlayedFeedback && (_audioPlayer?.IsPlaying() ?? false))
-            {
-                return;
-            }
-
             foreach (var task in _tasks)
             {
                 if (task.IsSettling)

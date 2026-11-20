@@ -316,7 +316,6 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 902546332}
   - {fileID: 2040620478}
   - {fileID: 97669619}
   - {fileID: 1265898029}
@@ -337,18 +336,21 @@ MonoBehaviour:
   _mode: 0
   _audioSource: {fileID: 1739773246}
   _taskList:
-  - {fileID: 902546333}
   - {fileID: 2040620479}
   - {fileID: 97669620}
   - {fileID: 1265898031}
   _stages: []
   _hintAfterIdleSeconds: 0
-  _unguidedFeedbackAudio:
-    name: 
-    clip: {fileID: 0}
-  _unguidedOutOfOrderFeedbackAudio:
-    name: 
-    clip: {fileID: 0}
+  _introAudio:
+  - name: Mega Welcome
+    clip: {fileID: 8300000, guid: eba34e1b1cf88d84daf0c2ba535578c2, type: 3}
+  - name: Evil Welcome
+    clip: {fileID: 8300000, guid: 616b2773cf9216044a8e852b95d78b49, type: 3}
+  - name: 3 box infront
+    clip: {fileID: 8300000, guid: c5f0123bc7985cd48bdd31c5a007ed88, type: 3}
+  _completeAudio:
+  - name: complete
+    clip: {fileID: 8300000, guid: 0f5aadbb65de8eb47b2f6d63c7a7cfc0, type: 3}
 --- !u!1 &375423384
 GameObject:
   m_ObjectHideFlags: 0
@@ -1425,61 +1427,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f7541587e82c0e44c970603d3d6a399f, type: 3}
---- !u!1 &902546331
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 902546332}
-  - component: {fileID: 902546333}
-  m_Layer: 0
-  m_Name: Welcome
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &902546332
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 902546331}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 235408597}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &902546333
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 902546331}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: eb674acbd763cf846ba8d9f84071902f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _taskName: Welcom
-  _onCompleteTask:
-    m_PersistentCalls:
-      m_Calls: []
-  _audioClips:
-  - name: Mega Welcome
-    clip: {fileID: 8300000, guid: eba34e1b1cf88d84daf0c2ba535578c2, type: 3}
-  - name: Evil Welcome
-    clip: {fileID: 8300000, guid: 616b2773cf9216044a8e852b95d78b49, type: 3}
-  - name: 3 box infront
-    clip: {fileID: 8300000, guid: c5f0123bc7985cd48bdd31c5a007ed88, type: 3}
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -1963,8 +1910,8 @@ MonoBehaviour:
     name: last box
     clip: {fileID: 8300000, guid: e772653cb0765964a8604d33da44ced1, type: 3}
   _feedbackAudioClip:
-    name: complete
-    clip: {fileID: 8300000, guid: 0f5aadbb65de8eb47b2f6d63c7a7cfc0, type: 3}
+    name: 
+    clip: {fileID: 0}
   _reminderInterval: 0
   _subTasks:
   - {fileID: 1869826460}
