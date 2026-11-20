@@ -15,9 +15,9 @@ namespace Framework.Tasks
         protected IVoicePlayer _audioPlayer;
 
         public string TaskName => _taskName;
-        public bool IsDoing { get; protected set; }
-        public bool IsComplete { get; protected set; }
-        public bool IsSkip { get; protected set; }
+        public TaskOutcome Outcome { get; private set; }
+        public bool IsComplete => Outcome != TaskOutcome.Pending;
+        public bool IsSkip => Outcome == TaskOutcome.Skipped;
         public UnityEvent OnCompleteTask => _onCompleteTask;
 
         public event Action Completed;
@@ -29,9 +29,7 @@ namespace Framework.Tasks
 
         public virtual void Prepare()
         {
-            IsComplete = false;
-            IsSkip = false;
-            IsDoing = false;
+            Outcome = TaskOutcome.Pending;
         }
 
         public abstract void StartTask();
@@ -43,8 +41,7 @@ namespace Framework.Tasks
 
         public virtual void Skip()
         {
-            IsSkip = true;
-            MarkComplete();
+            MarkSkipped();
         }
 
         public virtual void CancelTask()
@@ -53,13 +50,22 @@ namespace Framework.Tasks
 
         protected void MarkComplete()
         {
+            Finish(TaskOutcome.Completed);
+        }
+
+        protected void MarkSkipped()
+        {
+            Finish(TaskOutcome.Skipped);
+        }
+
+        private void Finish(TaskOutcome outcome)
+        {
             if (IsComplete)
             {
                 return;
             }
 
-            IsComplete = true;
-            IsDoing = false;
+            Outcome = outcome;
             Completed?.Invoke();
         }
     }

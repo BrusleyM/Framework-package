@@ -90,8 +90,19 @@ namespace Framework.Sequencing.Tests
 
             _task.Skip();
 
-            Assert.That(_task.IsSkip, Is.True);
+            Assert.That(_task.Outcome, Is.EqualTo(TaskOutcome.Skipped));
             Assert.That(_task.ResetTracking, Is.EqualTo(resetsBefore));
+        }
+
+        [Test]
+        public void Skipping_a_guided_task_that_already_completed_leaves_it_completed()
+        {
+            _task.StartTask();
+            _task.Answer();
+
+            _task.Skip();
+
+            Assert.That(_task.Outcome, Is.EqualTo(TaskOutcome.Completed));
         }
 
         [Test]
