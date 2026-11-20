@@ -20,6 +20,7 @@
 - A parallel subtask that ends up containing itself, directly or through another group, logs an error and refuses a nested execute, and ignores a nested cancel, instead of recursing without end. The inspector already rejects such a slot; this covers lists set from code. A group's completed listeners now run after its children have finished executing, so a listener may execute the group again.
 
 ### Changed
+- Tools > Framework > Check sequence setup uses `FindObjectsByType` instead of the obsolete `FindObjectsOfType`, which produced compiler warnings on Unity 6. Both exist from Unity 2022.3.
 - The CI Unity jobs pin the game-ci CLI release (`cliVersion`) instead of asking the GitHub API for the latest one, which answered 403 (rate limit) when the three Unity jobs started together and ended the job with "No test result files were found".
 - The CI Unity jobs cache the host project's Library by the package sources too, and no longer fall back to an older Library. A cache keyed only by the project manifest restored a Library from before files were added, so Unity compiled `AudioPlayer.cs` without the files next to it and the job ended with "No test result files were found" after a compile error.
 - `com.vishnu.framework.core` is no longer under `dependencies` in `package.json`: Unity cannot resolve a git dependency, so it only made installing the sequencer fail. Install core first as the README says. The release CI reads the core tag to test against from `requiresCore` (now 1.2.0, the release with `Framework.Core.Editor`) instead of the dependency.

@@ -12,7 +12,7 @@ namespace Framework.Sequencing.Editor
         {
             var found = 0;
             var covered = new HashSet<Task>();
-            foreach (var sequence in Object.FindObjectsOfType<SequentialTask>(true))
+            foreach (var sequence in Object.FindObjectsByType<SequentialTask>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID))
             {
                 found += Report(sequence, sequence.GetSetupIssues());
                 foreach (var task in sequence.AllTasks)
@@ -21,7 +21,7 @@ namespace Framework.Sequencing.Editor
                 }
             }
 
-            foreach (var task in Object.FindObjectsOfType<GuidedTask>(true))
+            foreach (var task in Object.FindObjectsByType<GuidedTask>(FindObjectsInactive.Include, FindObjectsSortMode.InstanceID))
             {
                 if (!covered.Contains(task))
                 {
