@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Framework.Tasks
 {
-    public abstract class GuidedTask : Task
+    public abstract class GuidedTask : Task, IUnguidedTask, IHintable, IPausableTask, ISettlingTask
     {
         [SerializeField]
         private MyClip _instructionalAudio;
@@ -22,8 +22,7 @@ namespace Framework.Tasks
 
         public GuidanceState State { get; private set; }
         public GameObjectTask CurrentSubtask => _sequencer?.Current;
-        public override bool IsSettling => IsFeedbackAudioPlaying();
-        public override bool HasHint => true;
+        public virtual bool IsSettling => IsFeedbackAudioPlaying();
 
         private SubtaskSequencer Subtasks
         {
@@ -31,11 +30,21 @@ namespace Framework.Tasks
             {
                 if (_sequencer == null || !ReferenceEquals(_sequencerSource, _subTasks))
                 {
+                    _sequencer?.Stop();
                     _sequencerSource = _subTasks;
                     _sequencer = new SubtaskSequencer(_subTasks);
                 }
 
                 return _sequencer;
+            }
+        }
+
+        public override void Prepare()
+        {
+            base.Prepare();
+            if (State == GuidanceState.Completed)
+            {
+                State = GuidanceState.Idle;
             }
         }
 
@@ -47,15 +56,15 @@ namespace Framework.Tasks
             Subtasks.Start(SubtaskFilter.All);
         }
 
-        public override void StartTaskUnguided()
+        public virtual void StartTaskUnguided()
         {
             Restart(GuidanceState.Unguided);
             Subtasks.RunSetup();
         }
 
-        public override void ShowHint()
+        public virtual void ShowHint()
         {
-            if (State != GuidanceState.Unguided)
+            if (State != GuidanceState.Unguided || IsComplete)
             {
                 return;
             }
@@ -65,7 +74,7 @@ namespace Framework.Tasks
             Subtasks.Start(SubtaskFilter.GuidanceOnly);
         }
 
-        public override void HideHint()
+        public virtual void HideHint()
         {
             if (State != GuidanceState.Hinting)
             {
@@ -76,13 +85,13 @@ namespace Framework.Tasks
             _audioPlayer?.Stop();
         }
 
-        public override void PauseTask()
+        public virtual void PauseTask()
         {
             _isPaused = true;
             _audioPlayer?.Pause();
         }
 
-        public override void ResumeTask()
+        public virtual void ResumeTask()
         {
             _isPaused = false;
             _audioPlayer?.Resume();
@@ -170,7 +179,7 @@ namespace Framework.Tasks
         {
             StopReminder();
             EndCompletionTracking();
-            Subtasks.Stop();
+            _sequencer?.Stop();
         }
 
         private void StopHint()

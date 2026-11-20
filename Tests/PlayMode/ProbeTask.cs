@@ -2,14 +2,13 @@ using Framework.Tasks;
 
 namespace Framework.Sequencing.Tests
 {
-    internal sealed class ProbeTask : Task
+    internal sealed class ProbeTask : Task, IUnguidedTask, IHintable, IPausableTask
     {
         public string Label { get; set; }
         public int StartCount { get; private set; }
         public int CancelCount { get; private set; }
         public int UnguidedStartCount { get; private set; }
         public int HintShowCount { get; private set; }
-        public bool GuidanceOnly { get; set; }
         public int PauseCount { get; private set; }
         public int ResumeCount { get; private set; }
 
@@ -17,18 +16,25 @@ namespace Framework.Sequencing.Tests
 
         public override void StartTask() => StartCount++;
 
-        public override bool IsGuidanceOnly => GuidanceOnly;
+        public void StartTaskUnguided() => UnguidedStartCount++;
 
-        public override bool HasHint => true;
+        public void ShowHint() => HintShowCount++;
 
-        public override void StartTaskUnguided() => UnguidedStartCount++;
-
-        public override void ShowHint() => HintShowCount++;
+        public void HideHint()
+        {
+        }
 
         public override void CancelTask() => CancelCount++;
 
-        public override void PauseTask() => PauseCount++;
+        public void PauseTask() => PauseCount++;
 
-        public override void ResumeTask() => ResumeCount++;
+        public void ResumeTask() => ResumeCount++;
+    }
+
+    internal sealed class GuidanceOnlyProbeTask : Task, IGuidanceOnlyTask
+    {
+        public int StartCount { get; private set; }
+
+        public override void StartTask() => StartCount++;
     }
 }

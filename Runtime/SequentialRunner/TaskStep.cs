@@ -16,6 +16,8 @@ namespace Framework.Sequencing
 
         public Task Task { get; }
 
+        private bool IsTaskSettling => (Task as ISettlingTask)?.IsSettling ?? false;
+
         protected override void OnEnter()
         {
             _taskCompletedButStillSettling = false;
@@ -27,17 +29,17 @@ namespace Framework.Sequencing
 
         protected override void OnPause()
         {
-            Task.PauseTask();
+            (Task as IPausableTask)?.PauseTask();
         }
 
         protected override void OnResume()
         {
-            Task.ResumeTask();
+            (Task as IPausableTask)?.ResumeTask();
         }
 
         protected override void OnAdvance(float deltaSeconds)
         {
-            if (_taskCompletedButStillSettling && !Task.IsSettling)
+            if (_taskCompletedButStillSettling && !IsTaskSettling)
             {
                 Finish();
             }
@@ -69,7 +71,7 @@ namespace Framework.Sequencing
 
         private void OnTaskCompleted()
         {
-            if (Task.IsSettling)
+            if (IsTaskSettling)
             {
                 _taskCompletedButStillSettling = true;
                 return;

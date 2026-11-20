@@ -135,14 +135,14 @@ namespace Framework.Sequencing.Tests
             Object.DestroyImmediate(secondHost);
         }
 
-        private sealed class ProbeTask : Task
+        private sealed class ProbeTask : Task, ISettlingTask
         {
             public int StartCount { get; private set; }
             public int SkipCount { get; private set; }
             public int CancelCount { get; private set; }
             public bool IsStillSettling { get; set; }
             public bool ThrowOnStart { get; set; }
-            public override bool IsSettling => IsStillSettling;
+            public bool IsSettling => IsStillSettling;
 
             public void CompleteFromOutside() => TaskComplete();
 

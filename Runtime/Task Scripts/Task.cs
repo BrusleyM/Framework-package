@@ -19,9 +19,6 @@ namespace Framework.Tasks
         public bool IsComplete { get; protected set; }
         public bool IsSkip { get; protected set; }
         public UnityEvent OnCompleteTask => _onCompleteTask;
-        public virtual bool IsSettling => false;
-        public virtual bool IsGuidanceOnly => false;
-        public virtual bool HasHint => false;
 
         public event Action Completed;
 
@@ -30,7 +27,7 @@ namespace Framework.Tasks
             _audioPlayer = player;
         }
 
-        public void Prepare()
+        public virtual void Prepare()
         {
             IsComplete = false;
             IsSkip = false;
@@ -38,27 +35,6 @@ namespace Framework.Tasks
         }
 
         public abstract void StartTask();
-
-        public virtual void PauseTask()
-        {
-        }
-
-        public virtual void ResumeTask()
-        {
-        }
-
-        public virtual void StartTaskUnguided()
-        {
-            StartTask();
-        }
-
-        public virtual void ShowHint()
-        {
-        }
-
-        public virtual void HideHint()
-        {
-        }
 
         public virtual void TaskComplete()
         {

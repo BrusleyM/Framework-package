@@ -5,14 +5,13 @@ using UnityEngine;
 
 namespace Framework.Tasks
 {
-    public class AudioTask : Task
+    public class AudioTask : Task, IPausableTask, IGuidanceOnlyTask
     {
         [SerializeField]
         private List<MyClip> _audioClips = new List<MyClip>();
 
         private Coroutine _playback;
 
-        public override bool IsGuidanceOnly => true;
         private bool _isPaused;
 
         public override void StartTask()
@@ -35,13 +34,13 @@ namespace Framework.Tasks
             _playback = StartCoroutine(PlayClipsOneAfterAnother());
         }
 
-        public override void PauseTask()
+        public virtual void PauseTask()
         {
             _isPaused = true;
             _audioPlayer?.Pause();
         }
 
-        public override void ResumeTask()
+        public virtual void ResumeTask()
         {
             _isPaused = false;
             _audioPlayer?.Resume();
