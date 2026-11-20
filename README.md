@@ -177,10 +177,17 @@ The Test scene is an optional sample (a Robot instructor, snap points, check poi
 
 ## Installation
 
-Install core first, then the sequencer, both by git URL in Package Manager. Unity does not resolve git-URL dependencies, so installing the sequencer alone fails with `Package [com.vishnu.framework.core@1.0.0] cannot be found`.
+Install core first, then the sequencer, both by git URL in Package Manager. Unity does not resolve git-URL dependencies, so the sequencer does not list core under `dependencies` (that made installing it alone fail with `Package [com.vishnu.framework.core@1.0.0] cannot be found`). It states the core version it needs in `requiresCore` in `package.json` instead, and the editor logs a warning when the installed core is older.
 
-1. `https://github.com/BrusleyM/Framework-core.git#v1.0.0`
-2. `https://github.com/BrusleyM/Framework-package.git#v3.0.1`
+| Sequencer | Needs core |
+|---|---|
+| next release (after 3.1.0) | 1.2.0 or newer |
+| 3.1.0 and 3.0.1 | 1.0.0 (as declared in their `package.json`) |
+
+1. `https://github.com/BrusleyM/Framework-core.git#v1.2.0`
+2. `https://github.com/BrusleyM/Framework-package.git#vX.Y.Z` (the sequencer release from the table)
+
+The package check fails if `requiresCore` is missing or core is listed under `dependencies`, and a release is tested against the core tag in `requiresCore`.
 
 ## Tests
 

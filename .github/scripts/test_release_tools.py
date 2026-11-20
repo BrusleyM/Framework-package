@@ -282,6 +282,22 @@ class PackageCheckTests(unittest.TestCase):
         self.assertTrue(any("displayName" in problem for problem in problems))
         self.assertTrue(any("not a semantic version" in problem for problem in problems))
 
+    def test_a_manifest_without_a_readable_required_core_version_is_reported(self):
+        for manifest in ({}, {"requiresCore": "^1.2"}, {"requiresCore": "latest"}):
+            self.assertEqual(
+                ["package.json requiresCore must be the core version this package needs, like 1.2.0"],
+                check_package.find_core_requirement_problems(manifest),
+            )
+
+    def test_a_manifest_with_a_required_core_version_has_no_core_problems(self):
+        self.assertEqual([], check_package.find_core_requirement_problems({"requiresCore": "1.2.0"}))
+
+    def test_declaring_core_as_a_dependency_is_reported_because_unity_cannot_resolve_it(self):
+        problems = check_package.find_core_requirement_problems({"requiresCore": "1.2.0", "dependencies": {"com.vishnu.framework.core": "1.2.0"}})
+
+        self.assertEqual(1, len(problems))
+        self.assertIn("use requiresCore", problems[0])
+
     def test_a_release_check_needs_the_changelog_section_of_the_manifest_version(self):
         (self.root / "CHANGELOG.md").write_text("# Changelog\n\n## [Unreleased]\n\n- x\n")
 
