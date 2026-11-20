@@ -277,6 +277,62 @@ namespace Framework.Sequencing.Tests
             Assert.That(_guidance.ExecuteCount, Is.EqualTo(2));
         }
 
+        [Test]
+        public void A_task_that_completed_can_complete_again_after_it_is_prepared_even_if_it_was_not_restarted()
+        {
+            _task.StartTask();
+            _task.Answer();
+            _task.Prepare();
+            var completions = 0;
+            _task.Completed += () => completions++;
+
+            _task.Answer();
+
+            Assert.That(completions, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void A_prepared_task_that_completed_before_can_be_skipped_and_is_marked_skipped()
+        {
+            _task.StartTask();
+            _task.Answer();
+            _task.Prepare();
+
+            _task.Skip();
+
+            Assert.That(_task.IsSkip, Is.True);
+        }
+
+        [Test]
+        public void Preparing_a_task_that_completed_makes_it_idle_again()
+        {
+            _task.StartTask();
+            _task.Answer();
+
+            _task.Prepare();
+
+            Assert.That(_task.State, Is.EqualTo(GuidanceState.Idle));
+        }
+
+        [Test]
+        public void A_hint_is_not_shown_for_a_task_that_a_subclass_completed_without_the_state_changing()
+        {
+            _task.StartTaskUnguided();
+            _task.CompleteQuietly();
+
+            _task.ShowHint();
+
+            Assert.That(_guidance.ExecuteCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Disabling_a_task_that_was_never_started_does_not_create_a_subtask_sequencer()
+        {
+            PrivateMembers.Invoke(_task, "OnDisable");
+
+            Assert.That(_task.CurrentSubtask, Is.Null);
+        }
+
         private sealed class AnswerTask : GuidedTask
         {
             public int BeganTracking { get; private set; }
@@ -284,6 +340,8 @@ namespace Framework.Sequencing.Tests
             public int ResetTracking { get; private set; }
 
             public void Answer() => TaskComplete();
+
+            public void CompleteQuietly() => MarkComplete();
 
             protected override void BeginCompletionTracking() => BeganTracking++;
 

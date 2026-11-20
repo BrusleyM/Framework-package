@@ -30,7 +30,7 @@ namespace Framework.Tasks
             _audioPlayer = player;
         }
 
-        public void Prepare()
+        public virtual void Prepare()
         {
             IsComplete = false;
             IsSkip = false;

@@ -31,11 +31,21 @@ namespace Framework.Tasks
             {
                 if (_sequencer == null || !ReferenceEquals(_sequencerSource, _subTasks))
                 {
+                    _sequencer?.Stop();
                     _sequencerSource = _subTasks;
                     _sequencer = new SubtaskSequencer(_subTasks);
                 }
 
                 return _sequencer;
+            }
+        }
+
+        public override void Prepare()
+        {
+            base.Prepare();
+            if (State == GuidanceState.Completed)
+            {
+                State = GuidanceState.Idle;
             }
         }
 
@@ -55,7 +65,7 @@ namespace Framework.Tasks
 
         public override void ShowHint()
         {
-            if (State != GuidanceState.Unguided)
+            if (State != GuidanceState.Unguided || IsComplete)
             {
                 return;
             }
@@ -170,7 +180,7 @@ namespace Framework.Tasks
         {
             StopReminder();
             EndCompletionTracking();
-            Subtasks.Stop();
+            _sequencer?.Stop();
         }
 
         private void StopHint()
