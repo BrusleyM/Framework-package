@@ -19,6 +19,7 @@ namespace Framework.Tasks
         private SubtaskSequencer _sequencer;
         private GameObjectTask[] _sequencerSource;
         private bool _isPaused;
+        private bool _isPlayingFeedback;
 
         public GuidanceState State { get; private set; }
         public GameObjectTask CurrentSubtask => _sequencer?.Current;
@@ -82,19 +83,19 @@ namespace Framework.Tasks
             }
 
             StopHint();
-            _audioPlayer?.Stop();
+            _audioPlayer?.Stop(this);
         }
 
         public virtual void PauseTask()
         {
             _isPaused = true;
-            _audioPlayer?.Pause();
+            _audioPlayer?.Pause(this);
         }
 
         public virtual void ResumeTask()
         {
             _isPaused = false;
-            _audioPlayer?.Resume();
+            _audioPlayer?.Resume(this);
         }
 
         public override void TaskComplete()
@@ -110,13 +111,13 @@ namespace Framework.Tasks
             if (wasHinting)
             {
                 Subtasks.TearDown(SubtaskFilter.GuidanceOnly);
-                _audioPlayer?.Stop();
+                _audioPlayer?.Stop(this);
             }
 
             State = GuidanceState.Completed;
-            if (wasGuided)
+            if (!wasGuided || !PlayFeedbackAudio())
             {
-                PlayFeedbackAudio();
+                _audioPlayer?.Stop(this);
             }
 
             MarkComplete();
@@ -130,9 +131,10 @@ namespace Framework.Tasks
             }
 
             IsSkip = true;
+            _isPlayingFeedback = false;
             StopWatching();
             State = GuidanceState.Completed;
-            _audioPlayer?.Stop();
+            _audioPlayer?.Stop(this);
             Subtasks.TearDown(SubtaskFilter.All);
             MarkComplete();
         }
@@ -140,8 +142,9 @@ namespace Framework.Tasks
         public override void CancelTask()
         {
             StopWatching();
+            _isPlayingFeedback = false;
             State = GuidanceState.Idle;
-            _audioPlayer?.Stop();
+            _audioPlayer?.Stop(this);
             Subtasks.TearDown(SubtaskFilter.All);
             ResetCompletionTracking();
             IsDoing = false;
@@ -149,7 +152,7 @@ namespace Framework.Tasks
 
         public bool IsFeedbackAudioPlaying()
         {
-            return _audioPlayer?.IsPlaying() ?? false;
+            return _isPlayingFeedback && (_audioPlayer?.IsPlayingFor(this) ?? false);
         }
 
         protected abstract void BeginCompletionTracking();
@@ -170,6 +173,7 @@ namespace Framework.Tasks
         private void Restart(GuidanceState newState)
         {
             _isPaused = false;
+            _isPlayingFeedback = false;
             StopWatching();
             State = newState;
             BeginCompletionTracking();
@@ -191,15 +195,22 @@ namespace Framework.Tasks
 
         private void PlayInstructionalAudio()
         {
-            _audioPlayer?.LoadAndPlay(_instructionalAudio?.clip);
+            if (_instructionalAudio != null && _instructionalAudio.clip != null)
+            {
+                _audioPlayer?.Play(_instructionalAudio.clip, this);
+            }
         }
 
-        private void PlayFeedbackAudio()
+        private bool PlayFeedbackAudio()
         {
-            if (!IsSkip && _feedbackAudioClip != null)
+            if (IsSkip || _feedbackAudioClip == null || _feedbackAudioClip.clip == null || _audioPlayer == null)
             {
-                _audioPlayer?.LoadAndPlay(_feedbackAudioClip.clip);
+                return false;
             }
+
+            _isPlayingFeedback = true;
+            _audioPlayer.Play(_feedbackAudioClip.clip, this, () => _isPlayingFeedback = false);
+            return true;
         }
 
         private void StartReminder()

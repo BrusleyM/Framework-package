@@ -11,7 +11,7 @@ namespace Framework.Sequencing
         private readonly List<Task> _tasks = new List<Task>();
         private readonly HashSet<Task> _acknowledged = new HashSet<Task>();
         private readonly List<Task> _completionOrder = new List<Task>();
-        private readonly AudioPlayer _audioPlayer;
+        private readonly IVoicePlayer _audioPlayer;
         private readonly CountdownTimer _idleTimer;
 
         private Task _hintedTask;
@@ -22,7 +22,7 @@ namespace Framework.Sequencing
         public UnguidedStep(
             string name,
             IEnumerable<Task> tasks,
-            AudioPlayer audioPlayer,
+            IVoicePlayer audioPlayer,
             float hintAfterIdleSeconds = 0f) : base(name)
         {
             foreach (var task in tasks)

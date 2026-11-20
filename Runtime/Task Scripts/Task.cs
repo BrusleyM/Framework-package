@@ -12,7 +12,7 @@ namespace Framework.Tasks
         [SerializeField]
         private UnityEvent _onCompleteTask = new UnityEvent();
 
-        protected AudioPlayer _audioPlayer;
+        protected IVoicePlayer _audioPlayer;
 
         public string TaskName => _taskName;
         public bool IsDoing { get; protected set; }
@@ -22,7 +22,7 @@ namespace Framework.Tasks
 
         public event Action Completed;
 
-        public void SetAudioPlayer(AudioPlayer player)
+        public void SetAudioPlayer(IVoicePlayer player)
         {
             _audioPlayer = player;
         }
