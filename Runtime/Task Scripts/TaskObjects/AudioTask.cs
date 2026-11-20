@@ -34,13 +34,13 @@ namespace Framework.Tasks
             _playback = StartCoroutine(PlayClipsOneAfterAnother());
         }
 
-        public void PauseTask()
+        public virtual void PauseTask()
         {
             _isPaused = true;
             _audioPlayer?.Pause();
         }
 
-        public void ResumeTask()
+        public virtual void ResumeTask()
         {
             _isPaused = false;
             _audioPlayer?.Resume();

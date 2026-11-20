@@ -21,6 +21,26 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
+        public void The_base_task_implements_no_interfaces_itself()
+        {
+            Assert.That(typeof(Task).GetInterfaces(), Is.Empty);
+        }
+
+        [Test]
+        public void The_capability_methods_of_the_guided_and_audio_tasks_can_be_overridden_by_a_subclass()
+        {
+            var overridable = new[]
+            {
+                typeof(GuidedTask).GetMethod("ShowHint"), typeof(GuidedTask).GetMethod("HideHint"),
+                typeof(GuidedTask).GetMethod("StartTaskUnguided"), typeof(GuidedTask).GetMethod("PauseTask"),
+                typeof(GuidedTask).GetMethod("ResumeTask"), typeof(GuidedTask).GetProperty("IsSettling").GetGetMethod(),
+                typeof(AudioTask).GetMethod("PauseTask"), typeof(AudioTask).GetMethod("ResumeTask")
+            };
+
+            Assert.That(overridable.All(method => method.IsVirtual), Is.True);
+        }
+
+        [Test]
         public void An_action_task_has_every_capability()
         {
             var capabilities = typeof(ActionTask).GetInterfaces();

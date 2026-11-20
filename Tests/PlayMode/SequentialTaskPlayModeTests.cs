@@ -236,7 +236,7 @@ namespace Framework.Sequencing.Tests
             _sequence.Run();
             yield return null;
 
-            Assert.AreEqual(0, guidance.UnguidedStartCount);
+            Assert.AreEqual(0, guidance.StartCount);
             Assert.AreEqual(1, real.UnguidedStartCount);
         }
 
