@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Framework.Audio;
 using UnityEngine;
 
@@ -22,6 +23,8 @@ namespace Framework.Tasks
         private bool _isPlayingFeedback;
 
         public GuidanceState State { get; private set; }
+        public IReadOnlyList<GameObjectTask> SubTasks => _subTasks ?? System.Array.Empty<GameObjectTask>();
+        public bool HasInstructionAudio => _instructionalAudio != null && _instructionalAudio.clip != null;
         public GameObjectTask CurrentSubtask => _sequencer?.Current;
         public virtual bool IsSettling => IsFeedbackAudioPlaying();
 
@@ -153,6 +156,42 @@ namespace Framework.Tasks
         public bool IsFeedbackAudioPlaying()
         {
             return _isPlayingFeedback && (_audioPlayer?.IsPlayingFor(this) ?? false);
+        }
+
+        public IReadOnlyList<SetupIssue> GetSetupIssues(bool forUnguidedMode = false)
+        {
+            var issues = new List<SetupIssue>();
+            var guidanceSubtasks = 0;
+            var subtasks = SubTasks;
+            for (var index = 0; index < subtasks.Count; index++)
+            {
+                if (subtasks[index] == null)
+                {
+                    issues.Add(new SetupIssue($"Sub Tasks entry {index} is empty."));
+                }
+                else if (!subtasks[index].IsSetup)
+                {
+                    guidanceSubtasks++;
+                }
+            }
+
+            if (_reminderInterval > 0f && !HasInstructionAudio)
+            {
+                issues.Add(new SetupIssue("Reminder Interval is set but there is no Instruction Audio to repeat."));
+            }
+
+            if (forUnguidedMode && !HasInstructionAudio && guidanceSubtasks == 0)
+            {
+                issues.Add(new SetupIssue("A hint would show and play nothing in unguided mode: add Instruction Audio or a subtask that is not marked Is Setup."));
+            }
+
+            issues.AddRange(GetCompletionSetupIssues(forUnguidedMode));
+            return issues;
+        }
+
+        protected virtual IEnumerable<SetupIssue> GetCompletionSetupIssues(bool forUnguidedMode)
+        {
+            return System.Array.Empty<SetupIssue>();
         }
 
         protected abstract void BeginCompletionTracking();

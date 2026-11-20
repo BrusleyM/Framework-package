@@ -3,7 +3,8 @@
     "rootNamespace": "Framework.Sequencing.Editor",
     "references": [
         "Framework.Sequencing.Core",
-        "Framework.Sequencing.Unity"
+        "Framework.Sequencing.Unity",
+        "Framework.Tasks"
     ],
     "includePlatforms": [
         "Editor"

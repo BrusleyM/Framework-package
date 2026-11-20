@@ -72,6 +72,7 @@ namespace Framework.Sequencing
                 return;
             }
 
+            LogSetupIssues();
             if (HasClips(_introAudio, ObtainAudioPlayer()))
             {
                 PlayIntro();
@@ -142,6 +143,7 @@ namespace Framework.Sequencing
                 _mode = mode;
                 _appliedMode = mode;
                 ModeChanged?.Invoke(mode);
+                LogSetupIssues();
                 return;
             }
 
@@ -157,6 +159,7 @@ namespace Framework.Sequencing
             _mode = mode;
             _appliedMode = mode;
             ModeChanged?.Invoke(mode);
+            LogSetupIssues();
             if (shouldRestart && !restartAlreadyPending)
             {
                 _modeRestart = StartCoroutine(RestartInNewModeNextFrame());
@@ -166,6 +169,40 @@ namespace Framework.Sequencing
         public void UseVoicePlayer(IVoicePlayer voicePlayer)
         {
             _audioPlayer = voicePlayer;
+        }
+
+        public IEnumerable<Task> AllTasks
+        {
+            get
+            {
+                if (_stages.Count == 0)
+                {
+                    return _taskList.AsReadOnly();
+                }
+
+                var tasks = new List<Task>();
+                foreach (var stage in _stages)
+                {
+                    if (stage != null)
+                    {
+                        tasks.AddRange(stage.Tasks);
+                    }
+                }
+
+                return tasks;
+            }
+        }
+
+        public IReadOnlyList<SetupIssue> GetSetupIssues()
+        {
+            return SequenceSetupRules.Check(
+                _mode,
+                _taskList,
+                _stages,
+                _audioSource != null || _audioPlayer != null,
+                ContainsClip(_introAudio),
+                ContainsClip(_completeAudio),
+                _hintAfterIdleSeconds);
         }
 
         public bool RequestHint() => ActiveUnguidedStep?.RequestHint() ?? false;
@@ -272,13 +309,8 @@ namespace Framework.Sequencing
             return new SequenceRunner(name, steps);
         }
 
-        private static bool HasClips(List<MyClip> clips, IVoicePlayer audioPlayer)
+        private static bool ContainsClip(List<MyClip> clips)
         {
-            if (audioPlayer == null)
-            {
-                return false;
-            }
-
             foreach (var clip in clips)
             {
                 if (clip != null && clip.clip != null)
@@ -287,6 +319,20 @@ namespace Framework.Sequencing
                 }
             }
             return false;
+        }
+
+        [System.Diagnostics.Conditional("UNITY_EDITOR"), System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+        private void LogSetupIssues()
+        {
+            foreach (var issue in GetSetupIssues())
+            {
+                Debug.LogWarning($"{name}: {issue.Message}", this);
+            }
+        }
+
+        private static bool HasClips(List<MyClip> clips, IVoicePlayer audioPlayer)
+        {
+            return audioPlayer != null && ContainsClip(clips);
         }
 
         private List<ISequenceStep> TaskAndStageSteps(IVoicePlayer audioPlayer)
