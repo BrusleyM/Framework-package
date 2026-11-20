@@ -9,14 +9,13 @@ namespace Framework.Sequencing
     public sealed class UnguidedStep : StepBase
     {
         private readonly List<Task> _tasks = new List<Task>();
-        private readonly HashSet<Task> _acknowledged = new HashSet<Task>();
+        private readonly CompletionJoin<Task> _join = new CompletionJoin<Task>();
         private readonly List<Task> _completionOrder = new List<Task>();
         private readonly IVoicePlayer _audioPlayer;
         private readonly CountdownTimer _idleTimer;
 
         private Task _hintedTask;
         private bool _isPaused;
-        private bool _isStarting;
         private bool _isAllComplete;
 
         public UnguidedStep(
@@ -34,6 +33,7 @@ namespace Framework.Sequencing
             }
 
             _audioPlayer = audioPlayer;
+            _join.AllFinished += OnEveryTaskAcknowledged;
             if (hintAfterIdleSeconds > 0f)
             {
                 _idleTimer = new CountdownTimer(hintAfterIdleSeconds);
@@ -48,8 +48,8 @@ namespace Framework.Sequencing
         public IReadOnlyList<Task> Tasks => _tasks;
         public IReadOnlyList<Task> CompletionOrder => _completionOrder;
         public Task HintedTask => _hintedTask;
-        public int CompletedCount => _acknowledged.Count;
-        public int OpenCount => _tasks.Count - _acknowledged.Count;
+        public int CompletedCount => _join.FinishedCount;
+        public int OpenCount => _tasks.Count - _join.FinishedCount;
         public bool WasCompletedInListedOrder => CompletionMatchesListedOrder();
 
         public int PositionOf(Task task)
@@ -69,22 +69,24 @@ namespace Framework.Sequencing
 
         protected override void OnEnter()
         {
-            _acknowledged.Clear();
             _completionOrder.Clear();
             _hintedTask = null;
             _isPaused = false;
             _isAllComplete = false;
-            _isStarting = true;
+            _join.Begin(_tasks);
             try
             {
                 StartEveryTask();
+                AcknowledgeEveryCompleteTask();
             }
-            finally
+            catch
             {
-                _isStarting = false;
+                _join.Stop();
+                throw;
             }
 
-            CompleteWhenEveryTaskIsComplete();
+            _join.Release();
+
             if (!_isAllComplete)
             {
                 _idleTimer?.Restart();
@@ -130,6 +132,7 @@ namespace Framework.Sequencing
 
         protected override void OnExit(ExitReason reason)
         {
+            _join.Stop();
             _idleTimer?.Stop();
             HideCurrentHint();
             foreach (var task in _tasks.ToArray())
@@ -195,22 +198,30 @@ namespace Framework.Sequencing
                 return;
             }
 
-            foreach (var task in _tasks.ToArray())
-            {
-                if (!IsWaiting)
-                {
-                    return;
-                }
+            AcknowledgeEveryCompleteTask();
+        }
 
-                if (task.IsComplete && _acknowledged.Add(task))
+        private void AcknowledgeEveryCompleteTask()
+        {
+            _join.Hold();
+            try
+            {
+                foreach (var task in _tasks.ToArray())
                 {
-                    Acknowledge(task);
+                    if (!IsWaiting)
+                    {
+                        return;
+                    }
+
+                    if (task.IsComplete && _join.Finish(task))
+                    {
+                        Acknowledge(task);
+                    }
                 }
             }
-
-            if (!_isStarting)
+            finally
             {
-                CompleteWhenEveryTaskIsComplete();
+                _join.Release();
             }
         }
 
@@ -233,35 +244,9 @@ namespace Framework.Sequencing
             TaskCompleted?.Invoke(task, PositionOf(task));
         }
 
-        private void CompleteWhenEveryTaskIsComplete()
+        private void OnEveryTaskAcknowledged()
         {
             if (_isAllComplete || !IsWaiting)
-            {
-                return;
-            }
-
-            foreach (var task in _tasks)
-            {
-                if (!task.IsComplete)
-                {
-                    return;
-                }
-            }
-
-            foreach (var task in _tasks.ToArray())
-            {
-                if (!IsWaiting)
-                {
-                    return;
-                }
-
-                if (_acknowledged.Add(task))
-                {
-                    Acknowledge(task);
-                }
-            }
-
-            if (!IsWaiting)
             {
                 return;
             }

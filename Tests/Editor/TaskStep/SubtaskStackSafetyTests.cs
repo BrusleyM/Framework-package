@@ -99,6 +99,43 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
+        public void A_group_may_be_executed_again_from_the_listener_of_a_subtask_that_completes_later()
+        {
+            var group = _host.AddComponent<ParallelSubtask>();
+            var child = _host.AddComponent<ManualSubtask>();
+            SetSubtasksWithoutValidation(group, child);
+            var restarted = false;
+            group.Completed += () =>
+            {
+                if (!restarted)
+                {
+                    restarted = true;
+                    group.Prepare();
+                    group.Execute();
+                }
+            };
+            group.Execute();
+
+            Assert.DoesNotThrow(() => child.Finish());
+
+            Assert.That(child.ExecuteCount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void A_group_may_be_cancelled_from_the_listener_of_a_subtask_that_completes_later()
+        {
+            var group = _host.AddComponent<ParallelSubtask>();
+            var child = _host.AddComponent<ManualSubtask>();
+            SetSubtasksWithoutValidation(group, child);
+            group.Completed += group.Cancel;
+            group.Execute();
+
+            Assert.DoesNotThrow(() => child.Finish());
+
+            Assert.That(child.CancelCount, Is.EqualTo(1));
+        }
+
+        [Test]
         public void A_group_may_be_executed_again_from_a_completed_listener_without_a_false_cycle_error()
         {
             var group = _host.AddComponent<ParallelSubtask>();
