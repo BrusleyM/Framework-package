@@ -13,6 +13,7 @@ namespace Framework.Sequencing.Tests
     {
         private GameObject _host;
         private SequentialTask _sequence;
+        private AudioSource _source;
 
         [SetUp]
         public void SetUp()
@@ -381,10 +382,31 @@ namespace Framework.Sequencing.Tests
         }
 
         [UnityTest]
-        public IEnumerator Changing_the_mode_during_the_intro_keeps_the_intro()
+        public IEnumerator Changing_the_mode_during_the_intro_lets_the_intro_finish_and_then_starts_the_tasks_in_the_new_mode()
         {
-            AddTask("only");
-            UseAudio(intro: new[] { Clip("intro", 1f) });
+            var task = AddTask("only");
+            UseAudio(intro: new[] { Clip("intro", 0.6f) });
+            _sequence.Run();
+            yield return null;
+
+            _sequence.SetMode(GuidanceMode.Unguided);
+            yield return null;
+            var introStillPlaying = _source.isPlaying;
+            var tasksStartedEarly = task.UnguidedStartCount + task.StartCount;
+            yield return new WaitForSeconds(1.2f);
+
+            Assert.IsTrue(introStillPlaying);
+            Assert.AreEqual(0, tasksStartedEarly);
+            Assert.AreEqual(1, task.UnguidedStartCount);
+            Assert.AreEqual(0, task.StartCount);
+        }
+
+        [UnityTest]
+        public IEnumerator When_cutting_the_intro_is_allowed_changing_the_mode_stops_it_and_starts_the_tasks_in_the_new_mode()
+        {
+            var task = AddTask("only");
+            UseAudio(intro: new[] { Clip("intro", 2f) });
+            Set("_allowCuttingIntro", true);
             _sequence.Run();
             yield return null;
 
@@ -392,7 +414,8 @@ namespace Framework.Sequencing.Tests
             yield return null;
             yield return null;
 
-            Assert.AreEqual("Intro", _sequence.Runner.CurrentStep.Name);
+            Assert.IsFalse(_source.isPlaying);
+            Assert.AreEqual(1, task.UnguidedStartCount);
         }
 
         [UnityTest]
@@ -552,8 +575,8 @@ namespace Framework.Sequencing.Tests
 
         private void UseAudio(MyClip[] intro = null, MyClip[] complete = null)
         {
-            var source = _host.AddComponent<AudioSource>();
-            Set("_audioSource", source);
+            _source = _host.AddComponent<AudioSource>();
+            Set("_audioSource", _source);
             Set("_introAudio", new List<MyClip>(intro ?? new MyClip[0]));
             Set("_completeAudio", new List<MyClip>(complete ?? new MyClip[0]));
         }

@@ -19,6 +19,8 @@ namespace Framework.Sequencing
         [SerializeField]
         private float _hintAfterIdleSeconds;
         [SerializeField]
+        private bool _allowCuttingIntro;
+        [SerializeField]
         private List<MyClip> _introAudio = new List<MyClip>();
         [SerializeField]
         private List<MyClip> _completeAudio = new List<MyClip>();
@@ -30,9 +32,8 @@ namespace Framework.Sequencing
         private GuidanceMode _appliedMode;
         private bool _hasApplied;
         private bool _runnerCameFromTaskList;
-        private int _leadingStepCount;
+        private bool _runnerIsIntro;
         private Coroutine _modeRestart;
-        private bool _restartIncludesIntro;
         private bool _restartIsPaused;
 
         public GuidanceMode Mode => _mode;
@@ -44,7 +45,7 @@ namespace Framework.Sequencing
         public SequenceRunner Runner => _runner;
         public Task CurrentTask => (ActiveTaskRunner?.CurrentStep as TaskStep)?.Task;
         public string CurrentStageName => (_runner?.CurrentStep as StageStep)?.Name;
-        public int CurrentStageIndex => _runner != null && !(_runner.CurrentStep is AudioStep) ? _runner.CurrentIndex - _leadingStepCount : -1;
+        public int CurrentStageIndex => _runner != null && !_runnerIsIntro && !(_runner.CurrentStep is AudioStep) ? _runner.CurrentIndex : -1;
         public bool HasRun => _runner != null && _runner.State != SequenceState.Idle;
         public bool IsRunning => _runner != null && _runner.IsInProgress;
 
@@ -71,21 +72,42 @@ namespace Framework.Sequencing
                 return;
             }
 
-            PlayTaskList(includeIntro: true);
+            if (HasClips(_introAudio, ObtainAudioPlayer()))
+            {
+                PlayIntro();
+            }
+            else
+            {
+                PlayTaskList();
+            }
         }
 
         public void Play(SequenceRunner runner)
         {
-            Start(runner, leadingStepCount: 0, cameFromTaskList: false);
+            Start(runner, cameFromTaskList: false, isIntro: false);
         }
 
-        private void PlayTaskList(bool includeIntro)
+        private void PlayIntro()
         {
-            var runner = BuildRunnerFromTaskList(includeIntro, out var leadingStepCount);
-            Start(runner, leadingStepCount, cameFromTaskList: true);
+            var intro = new SequenceRunner(IntroStepName, new ISequenceStep[] { new AudioStep(IntroStepName, _introAudio, ObtainAudioPlayer()) });
+            intro.Completed += () => PlayTasksWhenIntroEnds(intro);
+            Start(intro, cameFromTaskList: true, isIntro: true);
         }
 
-        private void Start(SequenceRunner runner, int leadingStepCount, bool cameFromTaskList)
+        private void PlayTasksWhenIntroEnds(SequenceRunner intro)
+        {
+            if (_runner == intro)
+            {
+                PlayTaskList();
+            }
+        }
+
+        private void PlayTaskList()
+        {
+            Start(BuildRunnerFromTaskList(), cameFromTaskList: true, isIntro: false);
+        }
+
+        private void Start(SequenceRunner runner, bool cameFromTaskList, bool isIntro)
         {
             if (!isActiveAndEnabled)
             {
@@ -100,7 +122,7 @@ namespace Framework.Sequencing
             }
 
             _runnerCameFromTaskList = cameFromTaskList;
-            _leadingStepCount = leadingStepCount;
+            _runnerIsIntro = isIntro;
             _runner = runner;
             _runner.Faulted += LogFault;
             EnsureClockIsRunning();
@@ -115,12 +137,19 @@ namespace Framework.Sequencing
                 return;
             }
 
+            if (_runnerIsIntro && IsRunning && !_allowCuttingIntro)
+            {
+                _mode = mode;
+                _appliedMode = mode;
+                ModeChanged?.Invoke(mode);
+                return;
+            }
+
             var restartAlreadyPending = _modeRestart != null;
             var shouldRestart = restartAlreadyPending || (IsRunning && _runnerCameFromTaskList && isActiveAndEnabled);
             if (!restartAlreadyPending)
             {
                 _restartIsPaused = _runner != null && _runner.State == SequenceState.Paused;
-                _restartIncludesIntro = _runner?.CurrentStep is AudioStep step && step.Name == IntroStepName;
             }
 
             CancelRunner();
@@ -160,11 +189,11 @@ namespace Framework.Sequencing
 
         public void SkipCurrentTask() => ActiveTaskRunner?.SkipCurrentStep();
 
-        public void GoBack() => GoBackWithin(ActiveTaskRunner);
+        public void GoBack() => ActiveTaskRunner?.GoBack();
 
         public void SkipCurrentStage() => _runner?.SkipCurrentStep();
 
-        public void GoBackStage() => GoBackWithin(_runner);
+        public void GoBackStage() => _runner?.GoBack();
 
         public void RestartCurrentStage() => _runner?.RestartCurrentStep();
 
@@ -223,17 +252,11 @@ namespace Framework.Sequencing
             Cancel();
         }
 
-        private SequenceRunner BuildRunnerFromTaskList(bool includeIntro, out int leadingStepCount)
+        private SequenceRunner BuildRunnerFromTaskList()
         {
             var audioPlayer = ObtainAudioPlayer();
             var steps = new List<ISequenceStep>();
             _unguidedSteps.Clear();
-            leadingStepCount = 0;
-            if (includeIntro && HasClips(_introAudio, audioPlayer))
-            {
-                steps.Add(new AudioStep(IntroStepName, _introAudio, audioPlayer));
-                leadingStepCount = 1;
-            }
 
             steps.AddRange(TaskAndStageSteps(audioPlayer));
             if (HasClips(_completeAudio, audioPlayer))
@@ -348,29 +371,11 @@ namespace Framework.Sequencing
             return combined;
         }
 
-        private void GoBackWithin(SequenceRunner runner)
-        {
-            if (runner == null)
-            {
-                return;
-            }
-
-            var isTopLevel = runner == _runner;
-            if (isTopLevel && _leadingStepCount > 0 && runner.CurrentIndex <= _leadingStepCount)
-            {
-                runner.RestartCurrentStep();
-            }
-            else
-            {
-                runner.GoBack();
-            }
-        }
-
         private IEnumerator RestartInNewModeNextFrame()
         {
             yield return null;
             _modeRestart = null;
-            PlayTaskList(_restartIncludesIntro);
+            PlayTaskList();
             if (_restartIsPaused)
             {
                 _runner.Pause();
