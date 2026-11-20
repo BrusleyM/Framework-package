@@ -11,6 +11,7 @@ namespace Framework.Audio
         private readonly AudioSource _audioSource;
         private readonly VoiceChannel _channel = new VoiceChannel();
         private AudioPlayerPump _pump;
+        private bool _hostInactive;
 
         public AudioPlayer(AudioSource audioSource)
         {
@@ -47,12 +48,14 @@ namespace Framework.Audio
                 return;
             }
 
-            _channel.Begin(owner, onFinished);
-            if (_audioSource != null)
+            if (_hostInactive && !_audioSource.gameObject.activeInHierarchy)
             {
-                _audioSource.Stop();
+                return;
             }
 
+            _hostInactive = false;
+            _channel.Begin(owner, onFinished);
+            _audioSource.Stop();
             if (!_audioSource.isActiveAndEnabled)
             {
                 Debug.LogWarning("The audio source is inactive, so the clip is skipped.", _audioSource);
@@ -152,7 +155,12 @@ namespace Framework.Audio
 
         internal void HostDeactivated()
         {
+            _hostInactive = true;
             _channel.FinishEvenIfPaused();
+            if (_pump != null)
+            {
+                _pump.enabled = false;
+            }
         }
 
         internal void HostDestroyed(AudioPlayerPump pump)
@@ -160,6 +168,7 @@ namespace Framework.Audio
             if (ReferenceEquals(pump, _pump))
             {
                 _channel.StopAll();
+                StopSource();
             }
         }
 

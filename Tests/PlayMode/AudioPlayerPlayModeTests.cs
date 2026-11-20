@@ -146,6 +146,35 @@ namespace Framework.Sequencing.Tests
         }
 
         [UnityTest]
+        public IEnumerator A_chain_that_keeps_playing_from_the_callback_while_the_host_is_deactivated_does_not_recurse_or_warn()
+        {
+            var plays = 0;
+            var inactiveWarnings = 0;
+            Application.LogCallback count = (message, stack, type) =>
+            {
+                if (message.Contains("inactive"))
+                {
+                    inactiveWarnings++;
+                }
+            };
+            Application.logMessageReceived += count;
+            System.Action again = null;
+            again = () =>
+            {
+                plays++;
+                _player.Play(Clip(1f), _owner, again);
+            };
+            _player.Play(Clip(2f), _owner, again);
+            yield return null;
+
+            _host.SetActive(false);
+
+            Application.logMessageReceived -= count;
+            Assert.That(plays, Is.EqualTo(1));
+            Assert.That(inactiveWarnings, Is.EqualTo(0));
+        }
+
+        [UnityTest]
         public IEnumerator A_null_owner_is_refused_without_cutting_the_current_audio()
         {
             _player.Play(Clip(1f), _owner);
