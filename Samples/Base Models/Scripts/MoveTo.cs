@@ -125,6 +125,16 @@ public class MoveTo : MonoBehaviour
         }
     }
 
+    public void MoveZoneTo(Transform newCentre)
+    {
+        _zoneCentre = newCentre;
+    }
+
+    public void ReturnZoneHome()
+    {
+        _zoneCentre = null;
+    }
+
     private Vector3 ZoneCentrePosition => _zoneCentre != null ? _zoneCentre.position : _homePosition;
 
     private Vector3 DesiredPosition()
