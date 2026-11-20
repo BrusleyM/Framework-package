@@ -187,6 +187,8 @@ Install core first, then the sequencer, both by git URL in Package Manager. Unit
 1. `https://github.com/BrusleyM/Framework-core.git#v1.2.0`
 2. `https://github.com/BrusleyM/Framework-package.git#vX.Y.Z` (the sequencer release from the table)
 
+The warning is shown once per editor session. A core older than 1.2.0 has no `Framework.Core.Editor` assembly, so with it the sequencer's editor code shows compile errors instead of the warning: update core. Release core before the sequencer release that needs it, because the release CI tests against the core tag in `requiresCore`.
+
 The package check fails if `requiresCore` is missing or core is listed under `dependencies`, and a release is tested against the core tag in `requiresCore`.
 
 ## Tests

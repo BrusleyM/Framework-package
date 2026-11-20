@@ -108,11 +108,12 @@ def find_manifest_problems(package_root):
 
 def find_core_requirement_problems(manifest):
     problems = []
+    required = manifest.get("requiresCore")
     try:
-        release_tools.parse_version(manifest.get("requiresCore", ""))
+        release_tools.parse_version(required if isinstance(required, str) else "")
     except release_tools.ReleaseError:
         problems.append("package.json requiresCore must be the core version this package needs, like 1.2.0")
-    if "com.vishnu.framework.core" in manifest.get("dependencies", {}):
+    if "com.vishnu.framework.core" in (manifest.get("dependencies") or {}):
         problems.append("package.json lists com.vishnu.framework.core under dependencies, which Unity cannot resolve from git: use requiresCore")
     return problems
 
