@@ -19,6 +19,7 @@ namespace Framework.Tasks
         public bool IsComplete => Outcome != TaskOutcome.Pending;
         public bool IsSkip => Outcome == TaskOutcome.Skipped;
         public UnityEvent OnCompleteTask => _onCompleteTask;
+        public ITaskClock Clock { get; private set; } = TaskClocks.Scaled;
 
         public event Action Completed;
 
@@ -27,9 +28,15 @@ namespace Framework.Tasks
             _audioPlayer = player;
         }
 
+        public void SetClock(ITaskClock clock)
+        {
+            Clock = clock ?? TaskClocks.Scaled;
+        }
+
         public virtual void Prepare()
         {
             Outcome = TaskOutcome.Pending;
+            Clock = TaskClocks.Scaled;
         }
 
         public abstract void StartTask();

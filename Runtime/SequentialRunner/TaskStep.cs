@@ -6,12 +6,14 @@ namespace Framework.Sequencing
     public sealed class TaskStep : StepBase
     {
         private readonly IVoicePlayer _audioPlayer;
+        private readonly ITaskClock _clock;
         private bool _taskCompletedButStillSettling;
 
-        public TaskStep(Task task, IVoicePlayer audioPlayer) : base(task.TaskName)
+        public TaskStep(Task task, IVoicePlayer audioPlayer, ITaskClock clock = null) : base(task.TaskName)
         {
             Task = task;
             _audioPlayer = audioPlayer;
+            _clock = clock;
         }
 
         public Task Task { get; }
@@ -24,6 +26,7 @@ namespace Framework.Sequencing
             Task.Completed += OnTaskCompleted;
             Task.Prepare();
             Task.SetAudioPlayer(_audioPlayer);
+            Task.SetClock(_clock);
             Task.StartTask();
         }
 

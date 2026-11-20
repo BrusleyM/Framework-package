@@ -19,6 +19,8 @@ namespace Framework.Sequencing
         [SerializeField]
         private float _hintAfterIdleSeconds;
         [SerializeField]
+        private bool _ignoreTimeScale;
+        [SerializeField]
         private bool _allowCuttingIntro;
         [SerializeField]
         private List<MyClip> _introAudio = new List<MyClip>();
@@ -26,7 +28,7 @@ namespace Framework.Sequencing
         private List<MyClip> _completeAudio = new List<MyClip>();
 
         private SequenceRunner _runner;
-        private Coroutine _clock;
+        private Coroutine _tickRoutine;
         private IVoicePlayer _audioPlayer;
         private readonly List<UnguidedStep> _unguidedSteps = new List<UnguidedStep>();
         private GuidanceMode _appliedMode;
@@ -37,6 +39,11 @@ namespace Framework.Sequencing
         private bool _restartIsPaused;
 
         public GuidanceMode Mode => _mode;
+        public bool IgnoreTimeScale
+        {
+            get => _ignoreTimeScale;
+            set => _ignoreTimeScale = value;
+        }
         public List<Task> TaskList => _taskList;
         public IReadOnlyList<Task> CompletionOrder => CombinedCompletionOrder();
         public event System.Action<GuidanceMode> ModeChanged;
@@ -260,7 +267,7 @@ namespace Framework.Sequencing
 
         private void CancelRunner()
         {
-            StopClock();
+            StopTickRoutine();
 
             if (_runner == null)
             {
@@ -360,7 +367,7 @@ namespace Framework.Sequencing
             var steps = new List<ISequenceStep>();
             if (_mode == GuidanceMode.Unguided)
             {
-                var unguided = new UnguidedStep(stepName, tasks, audioPlayer, _hintAfterIdleSeconds);
+                var unguided = new UnguidedStep(stepName, tasks, audioPlayer, _hintAfterIdleSeconds, TaskClocks.For(_ignoreTimeScale));
                 unguided.TaskCompleted += (task, position) => UnguidedTaskCompleted?.Invoke(task, position);
                 unguided.AllTasksCompleted += inOrder => UnguidedCompleted?.Invoke(inOrder);
                 _unguidedSteps.Add(unguided);
@@ -372,7 +379,7 @@ namespace Framework.Sequencing
             {
                 if (task != null)
                 {
-                    steps.Add(new TaskStep(task, audioPlayer));
+                    steps.Add(new TaskStep(task, audioPlayer, TaskClocks.For(_ignoreTimeScale)));
                 }
             }
 
@@ -396,9 +403,9 @@ namespace Framework.Sequencing
                 throw new System.InvalidOperationException($"{name} must be active and enabled to run a sequence.");
             }
 
-            if (_clock == null)
+            if (_tickRoutine == null)
             {
-                _clock = StartCoroutine(TickWhileInProgress());
+                _tickRoutine = StartCoroutine(TickWhileInProgress());
             }
         }
 
@@ -442,12 +449,12 @@ namespace Framework.Sequencing
             }
         }
 
-        private void StopClock()
+        private void StopTickRoutine()
         {
-            if (_clock != null)
+            if (_tickRoutine != null)
             {
-                StopCoroutine(_clock);
-                _clock = null;
+                StopCoroutine(_tickRoutine);
+                _tickRoutine = null;
             }
         }
 
@@ -457,7 +464,7 @@ namespace Framework.Sequencing
             {
                 try
                 {
-                    _runner.Advance(Time.deltaTime);
+                    _runner.Advance(_ignoreTimeScale ? Time.unscaledDeltaTime : Time.deltaTime);
                 }
                 catch (System.Exception exception)
                 {
@@ -467,7 +474,7 @@ namespace Framework.Sequencing
                 yield return null;
             }
 
-            _clock = null;
+            _tickRoutine = null;
         }
 
         private static void LogFault(System.Exception exception)

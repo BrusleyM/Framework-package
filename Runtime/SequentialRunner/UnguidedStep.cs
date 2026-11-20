@@ -12,6 +12,7 @@ namespace Framework.Sequencing
         private readonly CompletionJoin<Task> _join = new CompletionJoin<Task>();
         private readonly List<Task> _completionOrder = new List<Task>();
         private readonly IVoicePlayer _audioPlayer;
+        private readonly ITaskClock _clock;
         private readonly CountdownTimer _idleTimer;
 
         private Task _hintedTask;
@@ -22,7 +23,8 @@ namespace Framework.Sequencing
             string name,
             IEnumerable<Task> tasks,
             IVoicePlayer audioPlayer,
-            float hintAfterIdleSeconds = 0f) : base(name)
+            float hintAfterIdleSeconds = 0f,
+            ITaskClock clock = null) : base(name)
         {
             foreach (var task in tasks)
             {
@@ -33,6 +35,7 @@ namespace Framework.Sequencing
             }
 
             _audioPlayer = audioPlayer;
+            _clock = clock;
             _join.AllFinished += OnEveryTaskAcknowledged;
             if (hintAfterIdleSeconds > 0f)
             {
@@ -179,6 +182,7 @@ namespace Framework.Sequencing
             {
                 task.Prepare();
                 task.SetAudioPlayer(_audioPlayer);
+                task.SetClock(_clock);
                 task.Completed += OnTaskFinished;
             }
 
