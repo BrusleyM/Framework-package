@@ -283,7 +283,7 @@ class PackageCheckTests(unittest.TestCase):
         self.assertTrue(any("not a semantic version" in problem for problem in problems))
 
     def test_a_manifest_without_a_readable_required_core_version_is_reported(self):
-        for manifest in ({}, {"requiresCore": "^1.2"}, {"requiresCore": "latest"}):
+        for manifest in ({}, {"requiresCore": "^1.2"}, {"requiresCore": "latest"}, {"requiresCore": 1.2}, {"requiresCore": None, "dependencies": None}):
             self.assertEqual(
                 ["package.json requiresCore must be the core version this package needs, like 1.2.0"],
                 check_package.find_core_requirement_problems(manifest),

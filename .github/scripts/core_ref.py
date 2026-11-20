@@ -3,6 +3,8 @@ import json
 import pathlib
 import sys
 
+import release_tools
+
 PACKAGE_ROOT = pathlib.Path(__file__).resolve().parents[2]
 CORE_PACKAGE = "com.vishnu.framework.core"
 DEVELOPMENT_REF = "develop"
@@ -14,9 +16,13 @@ class CoreRefError(Exception):
 
 def core_version(manifest):
     version = manifest.get("requiresCore", "")
-    version = version.strip().lstrip("^~=v")
-    if not version:
+    if not isinstance(version, str) or not version.strip():
         raise CoreRefError(f"package.json does not declare requiresCore, the {CORE_PACKAGE} version this package needs.")
+    version = version.strip().lstrip("^~=v")
+    try:
+        release_tools.parse_version(version)
+    except release_tools.ReleaseError as problem:
+        raise CoreRefError(f"package.json requiresCore is not a version: {problem}")
     return version
 
 
@@ -28,7 +34,7 @@ def core_ref(manifest, release):
 
 def main(arguments, package_root=PACKAGE_ROOT):
     parser = argparse.ArgumentParser(description="Print the ref of the core package to check out.")
-    parser.add_argument("--release", action="store_true", help="use the released tag the package.json depends on instead of the development branch")
+    parser.add_argument("--release", action="store_true", help="use the released tag of the core version requiresCore names instead of the development branch")
     options = parser.parse_args(arguments)
     manifest = json.loads((pathlib.Path(package_root) / "package.json").read_text(encoding="utf-8"))
     try:

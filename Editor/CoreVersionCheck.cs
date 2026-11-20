@@ -11,6 +11,7 @@ namespace Framework.Sequencing.Editor
         private const string SequencerEditorAssembly = "Framework.Sequencing.Unity.Editor";
         private const string CoreEditorAssembly = "Framework.Core.Editor";
         private const string CoreName = "Framework Core";
+        private const string WarnedKey = "Framework.Sequencing.CoreVersionCheck.Warned";
         private const string SequencerName = "Framework Sequencer";
 
         static CoreVersionCheck()
@@ -34,10 +35,23 @@ namespace Framework.Sequencing.Editor
                 return;
             }
 
-            var problem = FindProblem(File.ReadAllText(Path.Combine(sequencerRoot, "package.json")), File.ReadAllText(Path.Combine(coreRoot, "package.json")));
-            if (problem != null)
+            if (SessionState.GetBool(WarnedKey, false))
             {
-                Debug.LogWarning(problem);
+                return;
+            }
+
+            SessionState.SetBool(WarnedKey, true);
+            try
+            {
+                var problem = FindProblem(File.ReadAllText(Path.Combine(sequencerRoot, "package.json")), File.ReadAllText(Path.Combine(coreRoot, "package.json")));
+                if (problem != null)
+                {
+                    Debug.LogWarning(problem);
+                }
+            }
+            catch (System.Exception failure) when (failure is IOException || failure is System.ArgumentException)
+            {
+                Debug.LogWarning($"{SequencerName} could not check the installed {CoreName} version: {failure.Message}");
             }
         }
     }
