@@ -133,13 +133,12 @@ namespace Framework.Tasks
                 return;
             }
 
-            IsSkip = true;
             _isPlayingFeedback = false;
             StopWatching();
             State = GuidanceState.Completed;
             _audioPlayer?.Stop(this);
             Subtasks.TearDown(SubtaskFilter.All);
-            MarkComplete();
+            MarkSkipped();
         }
 
         public override void CancelTask()
@@ -150,7 +149,6 @@ namespace Framework.Tasks
             _audioPlayer?.Stop(this);
             Subtasks.TearDown(SubtaskFilter.All);
             ResetCompletionTracking();
-            IsDoing = false;
         }
 
         public bool IsFeedbackAudioPlaying()

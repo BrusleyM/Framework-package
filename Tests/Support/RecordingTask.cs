@@ -20,6 +20,8 @@ namespace Framework.Sequencing.Tests
 
         public void Finish() => TaskComplete();
 
+        public void SkipItself() => MarkSkipped();
+
         public override void StartTask() => StartCount++;
 
         public void StartTaskUnguided()
