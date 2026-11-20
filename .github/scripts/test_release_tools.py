@@ -205,6 +205,24 @@ class PackageCheckTests(unittest.TestCase):
 
         self.assertEqual(["Samples~/Hidden is not listed in the package.json samples"], check_package.find_sample_problems(self.root))
 
+    def test_a_sample_path_outside_samples_is_reported(self):
+        self.write_manifest([{"displayName": "S", "description": "d", "path": "../Elsewhere"}])
+
+        self.assertEqual(["package.json sample path ../Elsewhere must be a folder inside Samples~"], check_package.find_sample_problems(self.root))
+
+    def test_a_sample_file_without_a_meta_file_is_reported(self):
+        folder = self.root / "Samples~" / "Showcase"
+        folder.mkdir(parents=True)
+        (folder / "Lost.cs").write_text("x")
+        self.write_manifest([{"displayName": "Showcase", "description": "d", "path": "Samples~/Showcase"}])
+
+        self.assertEqual(["Samples~/Showcase/Lost.cs has no .meta file, so it is probably ignored by git"], check_package.find_sample_problems(self.root))
+
+    def test_a_manifest_with_null_samples_has_no_sample_problems(self):
+        (self.root / "package.json").write_text(json.dumps({"name": "x", "samples": None}))
+
+        self.assertEqual([], check_package.find_sample_problems(self.root))
+
     def test_samples_left_at_the_package_root_are_reported(self):
         (self.root / "Samples").mkdir()
         self.write_manifest([])
@@ -327,6 +345,24 @@ class ImportSamplesTests(unittest.TestCase):
             (package / "package.json").write_text(json.dumps({"displayName": "X", "version": "1.0.0"}))
 
             self.assertEqual([], create_host_project.import_samples(package / ".host", package))
+
+
+    def test_two_samples_with_the_same_display_name_are_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            package = pathlib.Path(folder)
+            (package / "Samples~" / "A").mkdir(parents=True)
+            (package / "Samples~" / "B").mkdir(parents=True)
+            (package / "package.json").write_text(json.dumps({
+                "displayName": "X",
+                "version": "1.0.0",
+                "samples": [
+                    {"displayName": "Same", "description": "d", "path": "Samples~/A"},
+                    {"displayName": "Same", "description": "d", "path": "Samples~/B"},
+                ],
+            }))
+
+            with self.assertRaises(ValueError):
+                create_host_project.import_samples(package / ".host", package)
 
 
 class TestResultsTests(unittest.TestCase):

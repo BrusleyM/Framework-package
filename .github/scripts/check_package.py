@@ -109,22 +109,33 @@ def find_sample_problems(package_root):
     manifest = json.loads((package_root / "package.json").read_text())
     problems = []
     listed = set()
-    for index, sample in enumerate(manifest.get("samples", [])):
+    for index, sample in enumerate(manifest.get("samples") or []):
         for field in ("displayName", "description", "path"):
             if not sample.get(field):
                 problems.append(f"package.json samples entry {index} has no {field}")
         path = sample.get("path")
         if path:
             listed.add(path)
-            if not (package_root / path).is_dir():
+            if not path.startswith("Samples~/") or ".." in path.split("/"):
+                problems.append(f"package.json sample path {path} must be a folder inside Samples~")
+            elif not (package_root / path).is_dir():
                 problems.append(f"package.json sample path {path} is not a folder")
     samples_root = package_root / "Samples~"
     if samples_root.is_dir():
         for folder in sorted(samples_root.iterdir()):
             if folder.is_dir() and f"Samples~/{folder.name}" not in listed:
                 problems.append(f"Samples~/{folder.name} is not listed in the package.json samples")
+        problems += find_unignored_sample_files(package_root)
     if (package_root / "Samples").exists():
         problems.append("Samples/ is imported into every project that installs the package: move it to Samples~ and list it in package.json")
+    return problems
+
+
+def find_unignored_sample_files(package_root):
+    problems = []
+    for file in sorted((package_root / "Samples~").rglob("*")):
+        if file.is_file() and file.suffix != ".meta" and not file.with_name(file.name + ".meta").exists():
+            problems.append(f"{file.relative_to(package_root).as_posix()} has no .meta file, so it is probably ignored by git")
     return problems
 
 

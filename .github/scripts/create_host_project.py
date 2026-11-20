@@ -41,8 +41,13 @@ def create_host_project(project_path, package_root, unity_version, urp_version, 
 def import_samples(project_path, package_root):
     manifest = json.loads((pathlib.Path(package_root) / "package.json").read_text())
     imported = []
-    for sample in manifest.get("samples", []):
+    for sample in manifest.get("samples") or []:
+        for field in ("displayName", "path"):
+            if not sample.get(field):
+                raise ValueError(f"A package.json sample has no {field}")
         destination = project_path / "Assets" / "Samples" / manifest["displayName"] / manifest["version"] / sample["displayName"]
+        if destination.exists():
+            raise ValueError(f"Two samples would be imported into {destination}")
         shutil.copytree(pathlib.Path(package_root) / sample["path"], destination)
         imported.append(destination)
     return imported
