@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-11-20
+
 ### Added
 - Ignore Time Scale on `SequentialTask` (`IgnoreTimeScale`, off by default, so nothing changes unless it is ticked): the sequence's delays and the unguided idle hint run on `Time.unscaledDeltaTime` and a guided task's reminders wait in real time, so a time scale of zero no longer stops them while the voice-over (which ignores the time scale) goes on. The clock reaches the tasks through the new `ITaskClock` (`TaskClocks.Scaled` and `TaskClocks.Unscaled`), set by `TaskStep` and `UnguidedStep` like the audio player; `Task.Clock` and `Task.SetClock` are public. `Pause()` is unaffected. A task's clock is set when its step starts (and reset to scaled by `Prepare()`); the option applies from the next `Run()` or `Restart()`. The README has a Time section.
 - `requiresCore` in `package.json` states the core version this package needs, and the editor logs a warning when the installed core is older (`CoreVersionCheck`, using `PackageCompatibility` from core). The README has a table of which sequencer needs which core. The package check fails when `requiresCore` is missing or not a version.
