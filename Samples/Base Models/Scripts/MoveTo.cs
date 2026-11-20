@@ -27,9 +27,25 @@ public class MoveTo : MonoBehaviour
 
     public Vector3 positionOffset = new Vector3(-5f, 0f, 5f); // Offset relative to the lookAtTarget
 
+    [SerializeField]
+    private Transform _zoneCentre;
+    [SerializeField]
+    private float _zoneRadius = 8f;
+    [SerializeField]
+    private float _turnThresholdDegrees = 40f;
+    [SerializeField]
+    private float _minimumMoveDistance = 0.5f;
+    [SerializeField]
+    private float _arrivalDistance = 0.15f;
+
+    private Vector3 _homePosition;
+    private Vector3 _repositionTarget;
+    private bool _isRepositioning;
+
     void Start()
     {
         initialPosition = transform.position;
+        _homePosition = transform.position;
         idleStartTime = Time.time;
 
         if (locations.Length > 0)
@@ -98,24 +114,60 @@ public class MoveTo : MonoBehaviour
 
     void MaintainDistance()
     {
-        Vector3 forwardOffset = lookAtTarget.transform.forward * positionOffset.z;
-        Vector3 rightOffset = lookAtTarget.transform.right * positionOffset.x;
-        Vector3 upOffset = lookAtTarget.transform.up * positionOffset.y;
-
-        Vector3 desiredPosition = lookAtTarget.transform.position + forwardOffset + rightOffset + upOffset;
-
-        // Ensure the desired position is within the min and max distance range
-        float currentDistance = Vector3.Distance(desiredPosition, lookAtTarget.transform.position);
-        if (currentDistance < _minDistToTarget)
+        if (!_isRepositioning)
         {
-            desiredPosition = lookAtTarget.transform.position + (desiredPosition - lookAtTarget.transform.position).normalized * _minDistToTarget;
-        }
-        else if (currentDistance > maxDistToTarget)
-        {
-            desiredPosition = lookAtTarget.transform.position + (desiredPosition - lookAtTarget.transform.position).normalized * maxDistToTarget;
+            BeginRepositioningWhenNeeded();
         }
 
-        transform.position = Vector3.Lerp(transform.position, desiredPosition, speed * Time.deltaTime);
+        if (_isRepositioning)
+        {
+            MoveTowardsRepositionTarget();
+        }
+    }
+
+    private Vector3 ZoneCentrePosition => _zoneCentre != null ? _zoneCentre.position : _homePosition;
+
+    private Vector3 DesiredPosition()
+    {
+        var forwardOffset = lookAtTarget.transform.forward * positionOffset.z;
+        var rightOffset = lookAtTarget.transform.right * positionOffset.x;
+        var wanted = lookAtTarget.transform.position + forwardOffset + rightOffset;
+        var distance = Vector3.Distance(FollowRules.Flat(wanted), FollowRules.Flat(lookAtTarget.transform.position));
+        if (distance > Mathf.Epsilon)
+        {
+            var clamped = Mathf.Clamp(distance, _minDistToTarget, maxDistToTarget);
+            var direction = FollowRules.Flat(wanted - lookAtTarget.transform.position).normalized;
+            wanted = lookAtTarget.transform.position + direction * clamped;
+        }
+
+        var inZone = FollowRules.ClampToZone(wanted, ZoneCentrePosition, _zoneRadius);
+        return new Vector3(inZone.x, transform.position.y, inZone.z);
+    }
+
+    private void BeginRepositioningWhenNeeded()
+    {
+        var leader = lookAtTarget.transform.position;
+        var desired = DesiredPosition();
+        var isTooFarOrTooClose = FollowRules.IsOutsideComfortBand(transform.position, leader, _minDistToTarget, maxDistToTarget);
+        var hasLeaderTurnedAway = FollowRules.HasLeaderTurnedAway(transform.position, desired, leader, _turnThresholdDegrees);
+        var isOutsideZone = !FollowRules.IsInsideZone(transform.position, ZoneCentrePosition, _zoneRadius);
+        var isWorthMoving = Vector3.Distance(FollowRules.Flat(desired), FollowRules.Flat(transform.position)) > _minimumMoveDistance;
+
+        if (isWorthMoving && (isTooFarOrTooClose || hasLeaderTurnedAway || isOutsideZone))
+        {
+            _repositionTarget = desired;
+            _isRepositioning = true;
+        }
+    }
+
+    private void MoveTowardsRepositionTarget()
+    {
+        var next = Vector3.Lerp(transform.position, _repositionTarget, speed * Time.deltaTime);
+        transform.position = new Vector3(next.x, transform.position.y, next.z);
+        if (Vector3.Distance(FollowRules.Flat(transform.position), FollowRules.Flat(_repositionTarget)) < _arrivalDistance)
+        {
+            _isRepositioning = false;
+        }
     }
 
     void IdleFloat()
