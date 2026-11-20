@@ -1,0 +1,354 @@
+using System;
+using System.Collections.Generic;
+using Framework.Audio;
+using Framework.Tasks;
+
+namespace Framework.Sequencing
+{
+    public sealed class UnguidedStep : StepBase
+    {
+        private readonly List<Task> _tasks = new List<Task>();
+        private readonly HashSet<Task> _acknowledged = new HashSet<Task>();
+        private readonly List<Task> _completionOrder = new List<Task>();
+        private readonly AudioPlayer _audioPlayer;
+        private readonly MyClip _feedbackAudio;
+        private readonly MyClip _outOfOrderFeedbackAudio;
+        private readonly float _hintAfterIdleSeconds;
+
+        private Task _hintedTask;
+        private float _idleSeconds;
+        private bool _isPaused;
+        private bool _isStarting;
+        private bool _isAllComplete;
+        private bool _hasPlayedFeedback;
+
+        public UnguidedStep(
+            string name,
+            IEnumerable<Task> tasks,
+            AudioPlayer audioPlayer,
+            float hintAfterIdleSeconds = 0f,
+            MyClip feedbackAudio = null,
+            MyClip outOfOrderFeedbackAudio = null) : base(name)
+        {
+            foreach (var task in tasks)
+            {
+                if (task != null && !task.IsGuidanceOnly && !_tasks.Contains(task))
+                {
+                    _tasks.Add(task);
+                }
+            }
+
+            _audioPlayer = audioPlayer;
+            _hintAfterIdleSeconds = hintAfterIdleSeconds;
+            _feedbackAudio = feedbackAudio;
+            _outOfOrderFeedbackAudio = outOfOrderFeedbackAudio;
+        }
+
+        public event Action<Task, int> TaskCompleted;
+
+        public event Action<bool> AllTasksCompleted;
+
+        public IReadOnlyList<Task> Tasks => _tasks;
+        public IReadOnlyList<Task> CompletionOrder => _completionOrder;
+        public Task HintedTask => _hintedTask;
+        public int CompletedCount => _acknowledged.Count;
+        public int OpenCount => _tasks.Count - _acknowledged.Count;
+        public bool WasCompletedInListedOrder => CompletionMatchesListedOrder();
+
+        public int PositionOf(Task task)
+        {
+            return _completionOrder.IndexOf(task) + 1;
+        }
+
+        public bool RequestHint()
+        {
+            var shown = ShowHintOn(FirstOpenTask(), true);
+            if (shown)
+            {
+                _idleSeconds = 0f;
+            }
+            return shown;
+        }
+
+        protected override void OnEnter()
+        {
+            _acknowledged.Clear();
+            _completionOrder.Clear();
+            _hintedTask = null;
+            _idleSeconds = 0f;
+            _isPaused = false;
+            _isAllComplete = false;
+            _hasPlayedFeedback = false;
+            _isStarting = true;
+            try
+            {
+                StartEveryTask();
+            }
+            finally
+            {
+                _isStarting = false;
+            }
+
+            CompleteWhenEveryTaskIsComplete();
+        }
+
+        protected override void OnAdvance(float deltaSeconds)
+        {
+            if (_isAllComplete)
+            {
+                FinishWhenSettled();
+                return;
+            }
+
+            if (_hintAfterIdleSeconds <= 0f || _isPaused)
+            {
+                return;
+            }
+
+            _idleSeconds += deltaSeconds;
+            if (_idleSeconds >= _hintAfterIdleSeconds)
+            {
+                _idleSeconds = 0f;
+                ShowHintOn(FirstOpenTask(), false);
+            }
+        }
+
+        protected override void OnPause()
+        {
+            _isPaused = true;
+            foreach (var task in _tasks)
+            {
+                if (!task.IsComplete)
+                {
+                    task.PauseTask();
+                }
+            }
+        }
+
+        protected override void OnResume()
+        {
+            _isPaused = false;
+            foreach (var task in _tasks)
+            {
+                if (!task.IsComplete)
+                {
+                    task.ResumeTask();
+                }
+            }
+        }
+
+        protected override void OnExit(ExitReason reason)
+        {
+            HideCurrentHint();
+            foreach (var task in _tasks.ToArray())
+            {
+                if (task.IsComplete)
+                {
+                    task.Completed -= OnTaskFinished;
+                    continue;
+                }
+
+                if (reason == ExitReason.Skipped)
+                {
+                    task.Skip();
+                }
+                else
+                {
+                    task.CancelTask();
+                }
+                task.Completed -= OnTaskFinished;
+            }
+        }
+
+        private void StartEveryTask()
+        {
+            foreach (var task in _tasks)
+            {
+                task.Prepare();
+                task.SetAudioPlayer(_audioPlayer);
+                task.Completed += OnTaskFinished;
+            }
+
+            foreach (var task in _tasks.ToArray())
+            {
+                if (!task.IsComplete)
+                {
+                    task.StartTaskUnguided();
+                }
+            }
+        }
+
+        private void OnTaskFinished()
+        {
+            if (!IsWaiting)
+            {
+                return;
+            }
+
+            foreach (var task in _tasks.ToArray())
+            {
+                if (task.IsComplete && _acknowledged.Add(task))
+                {
+                    Acknowledge(task);
+                }
+            }
+
+            if (!_isStarting)
+            {
+                CompleteWhenEveryTaskIsComplete();
+            }
+        }
+
+        private void Acknowledge(Task task)
+        {
+            task.Completed -= OnTaskFinished;
+            if (task == _hintedTask)
+            {
+                _hintedTask = null;
+                task.HideHint();
+            }
+
+            if (!task.IsSkip)
+            {
+                _completionOrder.Add(task);
+            }
+
+            _idleSeconds = 0f;
+            task.OnCompleteTask.Invoke();
+            TaskCompleted?.Invoke(task, PositionOf(task));
+        }
+
+        private void CompleteWhenEveryTaskIsComplete()
+        {
+            if (_isAllComplete || !IsWaiting)
+            {
+                return;
+            }
+
+            foreach (var task in _tasks)
+            {
+                if (!task.IsComplete)
+                {
+                    return;
+                }
+            }
+
+            foreach (var task in _tasks.ToArray())
+            {
+                if (_acknowledged.Add(task))
+                {
+                    Acknowledge(task);
+                }
+            }
+
+            _isAllComplete = true;
+            var inOrder = CompletionMatchesListedOrder();
+            PlayFeedback(inOrder);
+            AllTasksCompleted?.Invoke(inOrder);
+        }
+
+        private void PlayFeedback(bool inOrder)
+        {
+            var useOutOfOrder = !inOrder && _outOfOrderFeedbackAudio != null && _outOfOrderFeedbackAudio.clip != null;
+            var clip = useOutOfOrder ? _outOfOrderFeedbackAudio : _feedbackAudio;
+            if (clip != null && clip.clip != null && _audioPlayer != null)
+            {
+                _audioPlayer.LoadAndPlay(clip.clip);
+                _hasPlayedFeedback = true;
+            }
+        }
+
+        private void FinishWhenSettled()
+        {
+            if (_hasPlayedFeedback && (_audioPlayer?.IsPlaying() ?? false))
+            {
+                return;
+            }
+
+            foreach (var task in _tasks)
+            {
+                if (task.IsSettling)
+                {
+                    return;
+                }
+            }
+
+            Finish();
+        }
+
+        private bool CompletionMatchesListedOrder()
+        {
+            var position = 0;
+            foreach (var task in _tasks)
+            {
+                if (task.IsSkip)
+                {
+                    continue;
+                }
+
+                if (position >= _completionOrder.Count || _completionOrder[position] != task)
+                {
+                    return false;
+                }
+                position++;
+            }
+            return position == _completionOrder.Count;
+        }
+
+        private Task FirstOpenTask()
+        {
+            foreach (var task in _tasks)
+            {
+                if (!task.IsComplete)
+                {
+                    return task;
+                }
+            }
+            return null;
+        }
+
+        private bool IsAnyTaskSettling()
+        {
+            foreach (var task in _tasks)
+            {
+                if (task.IsSettling)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool ShowHintOn(Task task, bool replayIfAlreadyShown)
+        {
+            if (!IsWaiting || _isAllComplete || _isPaused || task == null)
+            {
+                return false;
+            }
+
+            if (task == _hintedTask && !replayIfAlreadyShown)
+            {
+                return true;
+            }
+
+            if (IsAnyTaskSettling())
+            {
+                return false;
+            }
+
+            HideCurrentHint();
+            _hintedTask = task;
+            task.ShowHint();
+            return true;
+        }
+
+        private void HideCurrentHint()
+        {
+            if (_hintedTask != null)
+            {
+                _hintedTask.HideHint();
+                _hintedTask = null;
+            }
+        }
+    }
+}

@@ -20,6 +20,7 @@ namespace Framework.Tasks
         public bool IsSkip { get; protected set; }
         public UnityEvent OnCompleteTask => _onCompleteTask;
         public virtual bool IsSettling => false;
+        public virtual bool IsGuidanceOnly => false;
 
         public event Action Completed;
 
@@ -36,6 +37,14 @@ namespace Framework.Tasks
         }
 
         public abstract void StartTask();
+
+        public virtual void PauseTask()
+        {
+        }
+
+        public virtual void ResumeTask()
+        {
+        }
 
         public virtual void StartTaskUnguided()
         {

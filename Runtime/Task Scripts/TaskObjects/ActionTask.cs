@@ -23,18 +23,36 @@ namespace Framework.Tasks
         private bool _isAdvancingSubtasks;
         private bool _advanceRequested;
         private bool _isShowingHint;
+        private bool _isUnguided;
+        private bool _runsGuidanceOnly;
+        private bool _isPaused;
 
         public CheckPointsParent CheckPointsParent => _checkPoints;
         public GameObjectTask CurrentSubtask { get; private set; }
         public override bool IsSettling => IsFeedbackAudioPlaying();
 
+        public override void PauseTask()
+        {
+            _isPaused = true;
+            _audioPlayer?.Pause();
+        }
+
+        public override void ResumeTask()
+        {
+            _isPaused = false;
+            _audioPlayer?.Resume();
+        }
+
         public override void StartTaskUnguided()
         {
+            _isPaused = false;
             StopEverythingInProgress();
             _isShowingHint = false;
+            _isUnguided = true;
             LinkCheckPointsToThisTask();
             _checkPoints.ResetAllPoints();
             ListenForAllCheckPointsChecked();
+            RunSetupSubTasks();
         }
 
         public override void ShowHint()
@@ -45,6 +63,7 @@ namespace Framework.Tasks
             }
 
             _isShowingHint = true;
+            _runsGuidanceOnly = true;
             PlayInstructionalAudio();
             StartSubTasks();
         }
@@ -62,6 +81,9 @@ namespace Framework.Tasks
 
         public override void StartTask()
         {
+            _isUnguided = false;
+            _runsGuidanceOnly = false;
+            _isPaused = false;
             _isShowingHint = false;
             StopEverythingInProgress();
             LinkCheckPointsToThisTask();
@@ -131,7 +153,24 @@ namespace Framework.Tasks
             _isShowingHint = false;
             DetachFromCurrentSubTask();
             _advanceRequested = false;
-            TearDownSubTasks();
+            TearDownSubTasks(guidanceOnly: true);
+        }
+
+        private void RunSetupSubTasks()
+        {
+            if (_subTasks == null)
+            {
+                return;
+            }
+
+            foreach (var subTask in _subTasks)
+            {
+                if (subTask != null && subTask.IsSetup)
+                {
+                    subTask.Prepare();
+                    subTask.Execute();
+                }
+            }
         }
 
         private void StopEverythingInProgress()
@@ -170,7 +209,7 @@ namespace Framework.Tasks
 
         private void PlayFeedbackAudio()
         {
-            if (!IsSkip && _feedbackAudioClip != null)
+            if (!IsSkip && !_isUnguided && _feedbackAudioClip != null)
             {
                 _audioPlayer?.LoadAndPlay(_feedbackAudioClip.clip);
             }
@@ -199,7 +238,7 @@ namespace Framework.Tasks
             while (!IsComplete)
             {
                 yield return interval;
-                if (!IsComplete)
+                if (!IsComplete && !_isPaused)
                 {
                     PlayInstructionalAudio();
                 }
@@ -244,7 +283,7 @@ namespace Framework.Tasks
             {
                 _subTaskIndex++;
             }
-            while (_subTasks != null && _subTaskIndex < _subTasks.Length && _subTasks[_subTaskIndex] == null);
+            while (_subTasks != null && _subTaskIndex < _subTasks.Length && !IsRunnableNow(_subTasks[_subTaskIndex]));
 
             if (_subTasks == null || _subTaskIndex >= _subTasks.Length)
             {
@@ -258,6 +297,11 @@ namespace Framework.Tasks
             CurrentSubtask.Execute();
         }
 
+        private bool IsRunnableNow(GameObjectTask subTask)
+        {
+            return subTask != null && !(_runsGuidanceOnly && subTask.IsSetup);
+        }
+
         private void DetachFromCurrentSubTask()
         {
             if (CurrentSubtask != null)
@@ -266,7 +310,7 @@ namespace Framework.Tasks
             }
         }
 
-        private void TearDownSubTasks()
+        private void TearDownSubTasks(bool guidanceOnly = false)
         {
             if (_subTasks == null)
             {
@@ -275,7 +319,7 @@ namespace Framework.Tasks
 
             for (var index = _subTasks.Length - 1; index >= 0; index--)
             {
-                if (_subTasks[index] != null)
+                if (_subTasks[index] != null && !(guidanceOnly && _subTasks[index].IsSetup))
                 {
                     _subTasks[index].Cancel();
                 }
