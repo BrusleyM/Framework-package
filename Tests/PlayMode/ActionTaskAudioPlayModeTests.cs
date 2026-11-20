@@ -15,6 +15,12 @@ namespace Framework.Sequencing.Tests
         private ActionTask _task;
         private AudioSource _source;
 
+        [UnitySetUp]
+        public IEnumerator RequireAnAudioDevice()
+        {
+            yield return AudioDevice.RequireOrIgnore();
+        }
+
         [SetUp]
         public void SetUp()
         {
