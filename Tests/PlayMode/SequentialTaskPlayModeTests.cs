@@ -228,8 +228,8 @@ namespace Framework.Sequencing.Tests
         [UnityTest]
         public IEnumerator A_guidance_only_task_such_as_audio_is_left_out_in_unguided_mode()
         {
-            var guidance = AddTask("welcome");
-            guidance.GuidanceOnly = true;
+            var guidance = _host.AddComponent<GuidanceOnlyProbeTask>();
+            _sequence.AddTask(guidance);
             var real = AddTask("real");
             _sequence.SetMode(GuidanceMode.Unguided);
 

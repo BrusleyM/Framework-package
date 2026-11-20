@@ -27,7 +27,7 @@ namespace Framework.Sequencing
         {
             foreach (var task in tasks)
             {
-                if (task != null && !task.IsGuidanceOnly && !_tasks.Contains(task))
+                if (task != null && !(task is IGuidanceOnlyTask) && !_tasks.Contains(task))
                 {
                     _tasks.Add(task);
                 }
@@ -110,7 +110,7 @@ namespace Framework.Sequencing
             {
                 if (!task.IsComplete)
                 {
-                    task.PauseTask();
+                    (task as IPausableTask)?.PauseTask();
                 }
             }
         }
@@ -123,7 +123,7 @@ namespace Framework.Sequencing
             {
                 if (!task.IsComplete)
                 {
-                    task.ResumeTask();
+                    (task as IPausableTask)?.ResumeTask();
                 }
             }
         }
@@ -153,6 +153,23 @@ namespace Framework.Sequencing
             }
         }
 
+        private static bool IsSettling(Task task)
+        {
+            return (task as ISettlingTask)?.IsSettling ?? false;
+        }
+
+        private static void StartUnguided(Task task)
+        {
+            if (task is IUnguidedTask unguided)
+            {
+                unguided.StartTaskUnguided();
+            }
+            else
+            {
+                task.StartTask();
+            }
+        }
+
         private void StartEveryTask()
         {
             foreach (var task in _tasks)
@@ -166,7 +183,7 @@ namespace Framework.Sequencing
             {
                 if (!task.IsComplete)
                 {
-                    task.StartTaskUnguided();
+                    StartUnguided(task);
                 }
             }
         }
@@ -203,7 +220,7 @@ namespace Framework.Sequencing
             if (task == _hintedTask)
             {
                 _hintedTask = null;
-                task.HideHint();
+                (task as IHintable)?.HideHint();
             }
 
             if (!task.IsSkip)
@@ -258,7 +275,7 @@ namespace Framework.Sequencing
         {
             foreach (var task in _tasks)
             {
-                if (task.IsSettling)
+                if (IsSettling(task))
                 {
                     return;
                 }
@@ -290,7 +307,7 @@ namespace Framework.Sequencing
         {
             foreach (var task in _tasks)
             {
-                if (!task.IsComplete && task.HasHint)
+                if (!task.IsComplete && task is IHintable)
                 {
                     return task;
                 }
@@ -302,7 +319,7 @@ namespace Framework.Sequencing
         {
             foreach (var task in _tasks)
             {
-                if (task.IsSettling)
+                if (IsSettling(task))
                 {
                     return true;
                 }
@@ -335,7 +352,7 @@ namespace Framework.Sequencing
 
             HideCurrentHint();
             _hintedTask = task;
-            task.ShowHint();
+            ((IHintable)task).ShowHint();
             return true;
         }
 
@@ -343,7 +360,7 @@ namespace Framework.Sequencing
         {
             if (_hintedTask != null)
             {
-                _hintedTask.HideHint();
+                (_hintedTask as IHintable)?.HideHint();
                 _hintedTask = null;
             }
         }
