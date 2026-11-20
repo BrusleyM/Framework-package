@@ -582,6 +582,31 @@ namespace Framework.Sequencing.Tests
             yield return null;
         }
 
+        [UnityTest]
+        public IEnumerator Running_a_sequence_also_logs_the_problems_of_its_tasks()
+        {
+            var action = _host.AddComponent<ActionTask>();
+            typeof(ActionTask).GetField("_checkPoints", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(action, new Framework.CheckPoints.CheckPointsParent());
+            _sequence.AddTask(action);
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("No check points are assigned"));
+
+            _sequence.Run();
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Switching_to_unguided_mode_logs_the_problems_of_that_mode()
+        {
+            _sequence.AddTask(_host.AddComponent<GuidanceOnlyProbeTask>());
+            _sequence.Run();
+            yield return null;
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("nothing to run"));
+
+            _sequence.SetMode(GuidanceMode.Unguided);
+            yield return null;
+            yield return null;
+        }
+
         private ProbeTask AddStageWithTask(string stageName)
         {
             var stageObject = new GameObject(stageName);

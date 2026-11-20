@@ -23,7 +23,7 @@ namespace Framework.Tasks
         private bool _isPlayingFeedback;
 
         public GuidanceState State { get; private set; }
-        public IReadOnlyList<GameObjectTask> SubTasks => _subTasks ?? new GameObjectTask[0];
+        public IReadOnlyList<GameObjectTask> SubTasks => _subTasks ?? System.Array.Empty<GameObjectTask>();
         public bool HasInstructionAudio => _instructionalAudio != null && _instructionalAudio.clip != null;
         public GameObjectTask CurrentSubtask => _sequencer?.Current;
         public virtual bool IsSettling => IsFeedbackAudioPlaying();
@@ -158,7 +158,7 @@ namespace Framework.Tasks
             return _isPlayingFeedback && (_audioPlayer?.IsPlayingFor(this) ?? false);
         }
 
-        public IReadOnlyList<SetupIssue> GetSetupIssues()
+        public IReadOnlyList<SetupIssue> GetSetupIssues(bool forUnguidedMode = false)
         {
             var issues = new List<SetupIssue>();
             var guidanceSubtasks = 0;
@@ -180,18 +180,18 @@ namespace Framework.Tasks
                 issues.Add(new SetupIssue("Reminder Interval is set but there is no Instruction Audio to repeat."));
             }
 
-            if (!HasInstructionAudio && guidanceSubtasks == 0)
+            if (forUnguidedMode && !HasInstructionAudio && guidanceSubtasks == 0)
             {
-                issues.Add(new SetupIssue("A hint would show and play nothing: add Instruction Audio or a subtask that is not marked Is Setup."));
+                issues.Add(new SetupIssue("A hint would show and play nothing in unguided mode: add Instruction Audio or a subtask that is not marked Is Setup."));
             }
 
-            issues.AddRange(GetCompletionSetupIssues());
+            issues.AddRange(GetCompletionSetupIssues(forUnguidedMode));
             return issues;
         }
 
-        protected virtual IEnumerable<SetupIssue> GetCompletionSetupIssues()
+        protected virtual IEnumerable<SetupIssue> GetCompletionSetupIssues(bool forUnguidedMode)
         {
-            return new SetupIssue[0];
+            return System.Array.Empty<SetupIssue>();
         }
 
         protected abstract void BeginCompletionTracking();

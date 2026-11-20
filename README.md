@@ -119,8 +119,8 @@ Narration goes through an `IVoicePlayer`. Every clip is played for an owner (the
 
 Some ticks change behaviour silently, for example an `EnableTask` that is not marked Is Setup never runs in unguided mode, so the box it should switch on stays hidden. The setup is checked in three places:
 
-- The inspector of a `SequentialTask` and of a `GuidedTask` (so also `ActionTask`) shows each problem as a warning box above the fields.
-- `SequentialTask.Run()` logs them as warnings in the editor and in development builds.
+- The inspector of a `SequentialTask` shows each problem as a warning box above the fields, and a `GuidedTask` (so also `ActionTask`) shows its own mode-independent problems under its header (this uses `Editor.finishedDefaultHeaderGUI`, so it does not replace your own inspectors).
+- `SequentialTask.Run()` and a mode change while playing log them as warnings in the editor and in development builds. The sequence's list includes the problems of its guided tasks, prefixed with the task's name, checked for the sequence's current mode.
 - The menu item Tools > Framework > Check sequence setup lists the problems of every sequence and guided task in the open scenes.
 
 `SequentialTask.GetSetupIssues()` and `GuidedTask.GetSetupIssues()` return the same list from code. What is checked:
@@ -132,7 +132,7 @@ Some ticks change behaviour silently, for example an `EnableTask` that is not ma
 | Guided task | an empty subtask entry; Reminder Interval without Instruction Audio; a hint that would show and play nothing (no Instruction Audio and no subtask without Is Setup) |
 | Action task | no check points assigned; a highlight subtask marked Is Setup |
 
-A custom `GuidedTask` adds its own checks by overriding `GetCompletionSetupIssues()`.
+A custom `GuidedTask` adds its own checks by overriding `GetCompletionSetupIssues(bool forUnguidedMode)`. `GuidedTask.GetSetupIssues(forUnguidedMode)` only reports the hint and highlight problems when asked for unguided mode, because a hint only exists there. When stages are listed, the plain task list is ignored (as at run time) and the unguided checks run per stage.
 
 ## Build a sequence in the editor
 

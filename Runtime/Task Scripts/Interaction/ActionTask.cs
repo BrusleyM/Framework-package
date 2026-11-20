@@ -12,7 +12,7 @@ namespace Framework.Tasks
 
         public CheckPointsParent CheckPointsParent => _checkPoints;
 
-        protected override IEnumerable<SetupIssue> GetCompletionSetupIssues()
+        protected override IEnumerable<SetupIssue> GetCompletionSetupIssues(bool forUnguidedMode)
         {
             var issues = new List<SetupIssue>();
             if (!HasCheckPoints())
@@ -22,7 +22,7 @@ namespace Framework.Tasks
 
             foreach (var subtask in SubTasks)
             {
-                if (subtask is HighlightTask && subtask.IsSetup)
+                if (forUnguidedMode && subtask is HighlightTask && subtask.IsSetup)
                 {
                     issues.Add(new SetupIssue($"Subtask '{subtask.name}' is a highlight marked Is Setup, so it is shown even without a hint: untick Is Setup so it only shows when guided or on a hint."));
                 }

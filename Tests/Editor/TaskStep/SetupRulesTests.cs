@@ -124,8 +124,8 @@ namespace Framework.Sequencing.Tests
 
             PrivateMembers.SetField(enable, "_isSetup", true);
 
-            Assert.That(before, Has.Some.Contain("not marked Is Setup"));
-            Assert.That(Messages(_sequence), Has.None.Contain("not marked Is Setup"));
+            Assert.That(before, Has.Some.Contain("turns an object on or off"));
+            Assert.That(Messages(_sequence), Has.None.Contain("turns an object on or off"));
         }
 
         [Test]
@@ -139,14 +139,76 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
-        public void A_complete_unguided_setup_has_no_issues()
+        public void A_complete_unguided_setup_has_no_issues_at_all()
         {
-            _sequence.AddTask(_host.AddComponent<CapableTask>());
+            var task = _host.AddComponent<CapableTask>();
+            PrivateMembers.SetField(task, "_instructionalAudio", Clip());
+            _sequence.AddTask(task);
             _sequence.SetMode(GuidanceMode.Unguided);
             PrivateMembers.SetField(_sequence, "_hintAfterIdleSeconds", 10f);
 
-            Assert.That(Messages(_sequence), Has.None.Contain("no task can give a hint"));
-            Assert.That(Messages(_sequence), Has.None.Contain("IUnguidedTask"));
+            Assert.That(Messages(_sequence), Is.Empty);
+        }
+
+        [Test]
+        public void The_hint_rule_is_only_reported_for_unguided_mode_and_names_the_task_in_the_sequence()
+        {
+            var task = _host.AddComponent<CapableTask>();
+            _sequence.AddTask(task);
+            var guided = Messages(_sequence);
+
+            _sequence.SetMode(GuidanceMode.Unguided);
+
+            Assert.That(guided, Is.Empty);
+            Assert.That(Messages(_sequence), Has.Some.Contain("Task 'host': A hint would show and play nothing"));
+        }
+
+        [Test]
+        public void When_stages_are_used_the_plain_task_list_is_ignored_like_at_run_time()
+        {
+            _sequence.AddTask(null);
+            _sequence.AddStage(NewStage("stage one", _host.AddComponent<PlainTask>()));
+
+            Assert.That(Messages(_sequence), Is.Empty);
+        }
+
+        [Test]
+        public void An_empty_stage_entry_is_reported()
+        {
+            _sequence.AddStage(null);
+
+            Assert.That(Messages(_sequence), Has.Some.Contain("Stages entry 0 is empty"));
+        }
+
+        [Test]
+        public void The_same_task_in_two_stages_is_reported_as_listed_more_than_once()
+        {
+            var task = _host.AddComponent<PlainTask>();
+            _sequence.AddStage(NewStage("one", task));
+            _sequence.AddStage(NewStage("two", task));
+
+            Assert.That(Messages(_sequence), Has.Some.Contain("listed more than once"));
+        }
+
+        [Test]
+        public void A_stage_that_only_has_guidance_tasks_is_reported_in_unguided_mode_even_when_other_stages_have_work()
+        {
+            _sequence.AddStage(NewStage("welcome", _host.AddComponent<GuidanceTask>()));
+            _sequence.AddStage(NewStage("work", _host.AddComponent<UnguidedOnlyTask>()));
+            _sequence.SetMode(GuidanceMode.Unguided);
+
+            Assert.That(Messages(_sequence), Has.Some.Contain("A stage only has tasks that give guidance"));
+        }
+
+        [Test]
+        public void An_enable_subtask_that_is_not_setup_is_not_reported_for_a_guided_sequence()
+        {
+            var task = _host.AddComponent<CapableTask>();
+            PrivateMembers.SetField(task, "_subTasks", new GameObjectTask[] { _host.AddComponent<EnableTask>() });
+            PrivateMembers.SetField(task, "_instructionalAudio", Clip());
+            _sequence.AddTask(task);
+
+            Assert.That(Messages(_sequence), Is.Empty);
         }
 
         [Test]
@@ -174,16 +236,16 @@ namespace Framework.Sequencing.Tests
             var setup = _host.AddComponent<MarkerSubtask>();
             PrivateMembers.SetField(setup, "_isSetup", true);
             PrivateMembers.SetField(task, "_subTasks", new GameObjectTask[] { setup });
-            var withOnlySetup = Messages(task);
+            var withOnlySetup = MessagesWhenUnguided(task);
 
             PrivateMembers.SetField(task, "_subTasks", new GameObjectTask[] { setup, _host.AddComponent<MarkerSubtask>() });
-            var withGuidance = Messages(task);
+            var withGuidance = MessagesWhenUnguided(task);
             PrivateMembers.SetField(task, "_subTasks", new GameObjectTask[0]);
             PrivateMembers.SetField(task, "_instructionalAudio", Clip());
 
             Assert.That(withOnlySetup, Has.Some.Contain("A hint would show and play nothing"));
             Assert.That(withGuidance, Has.None.Contain("A hint would show and play nothing"));
-            Assert.That(Messages(task), Has.None.Contain("A hint would show and play nothing"));
+            Assert.That(MessagesWhenUnguided(task), Has.None.Contain("A hint would show and play nothing"));
         }
 
         [Test]
@@ -216,7 +278,21 @@ namespace Framework.Sequencing.Tests
             PrivateMembers.SetField(highlight, "_isSetup", true);
             PrivateMembers.SetField(action, "_subTasks", new GameObjectTask[] { highlight });
 
-            Assert.That(Messages(action), Has.Some.Contain("is a highlight marked Is Setup"));
+            Assert.That(MessagesWhenUnguided(action), Has.Some.Contain("is a highlight marked Is Setup"));
+            Assert.That(Messages(action), Has.None.Contain("is a highlight marked Is Setup"));
+        }
+
+        private TaskStage NewStage(string name, params Task[] tasks)
+        {
+            var stageObject = new GameObject(name);
+            stageObject.transform.SetParent(_host.transform);
+            var stage = stageObject.AddComponent<TaskStage>();
+            foreach (var task in tasks)
+            {
+                stage.AddTask(task);
+            }
+
+            return stage;
         }
 
         private static List<string> Messages(SequentialTask sequence)
@@ -227,6 +303,11 @@ namespace Framework.Sequencing.Tests
         private static List<string> Messages(GuidedTask task)
         {
             return task.GetSetupIssues().Select(issue => issue.Message).ToList();
+        }
+
+        private static List<string> MessagesWhenUnguided(GuidedTask task)
+        {
+            return task.GetSetupIssues(forUnguidedMode: true).Select(issue => issue.Message).ToList();
         }
 
         private static MyClip Clip()

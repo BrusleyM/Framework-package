@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Framework.Tasks;
 using UnityEditor;
 using UnityEngine;
@@ -10,20 +11,28 @@ namespace Framework.Sequencing.Editor
         public static void CheckOpenScenes()
         {
             var found = 0;
+            var covered = new HashSet<Task>();
             foreach (var sequence in Object.FindObjectsOfType<SequentialTask>(true))
             {
                 found += Report(sequence, sequence.GetSetupIssues());
+                foreach (var task in sequence.AllTasks)
+                {
+                    covered.Add(task);
+                }
             }
 
             foreach (var task in Object.FindObjectsOfType<GuidedTask>(true))
             {
-                found += Report(task, task.GetSetupIssues());
+                if (!covered.Contains(task))
+                {
+                    found += Report(task, task.GetSetupIssues());
+                }
             }
 
             Debug.Log(found == 0 ? "Sequence setup check: no issues found." : $"Sequence setup check: {found} issue(s) found.");
         }
 
-        private static int Report(Object context, System.Collections.Generic.IReadOnlyList<SetupIssue> issues)
+        private static int Report(Object context, IReadOnlyList<SetupIssue> issues)
         {
             foreach (var issue in issues)
             {

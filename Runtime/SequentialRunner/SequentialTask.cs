@@ -158,6 +158,7 @@ namespace Framework.Sequencing
             _mode = mode;
             _appliedMode = mode;
             ModeChanged?.Invoke(mode);
+            LogSetupIssues();
             if (shouldRestart && !restartAlreadyPending)
             {
                 _modeRestart = StartCoroutine(RestartInNewModeNextFrame());
@@ -167,6 +168,28 @@ namespace Framework.Sequencing
         public void UseVoicePlayer(IVoicePlayer voicePlayer)
         {
             _audioPlayer = voicePlayer;
+        }
+
+        public IEnumerable<Task> AllTasks
+        {
+            get
+            {
+                if (_stages.Count == 0)
+                {
+                    return _taskList;
+                }
+
+                var tasks = new List<Task>();
+                foreach (var stage in _stages)
+                {
+                    if (stage != null)
+                    {
+                        tasks.AddRange(stage.Tasks);
+                    }
+                }
+
+                return tasks;
+            }
         }
 
         public IReadOnlyList<SetupIssue> GetSetupIssues()
