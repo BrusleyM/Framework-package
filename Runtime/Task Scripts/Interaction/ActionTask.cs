@@ -1,3 +1,4 @@
+using System;
 using Framework.CheckPoints;
 using UnityEngine;
 
@@ -12,6 +13,11 @@ namespace Framework.Tasks
 
         protected override void BeginCompletionTracking()
         {
+            if (_checkPoints == null)
+            {
+                throw new InvalidOperationException($"{name} has no check points assigned.");
+            }
+
             LinkCheckPointsToThisTask();
             _checkPoints.ResetAllPoints();
             _checkPoints.OnAllChecked.AddListener(TaskComplete);
@@ -19,12 +25,12 @@ namespace Framework.Tasks
 
         protected override void EndCompletionTracking()
         {
-            _checkPoints.OnAllChecked.RemoveListener(TaskComplete);
+            _checkPoints?.OnAllChecked?.RemoveListener(TaskComplete);
         }
 
         protected override void ResetCompletionTracking()
         {
-            _checkPoints.ResetAllPoints();
+            _checkPoints?.ResetAllPoints();
         }
 
         private void LinkCheckPointsToThisTask()

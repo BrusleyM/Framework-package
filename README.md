@@ -11,7 +11,7 @@ A reusable sequencing framework for Unity. Tell a guided flow, such as a tutoria
 | `Framework.Sequencing.Unity.Editor` | Core, Unity | Editor only. The `SequentialTask` inspector: previous, current and next stage and step, and developer controls. |
 | `Framework.Sequencing.Xr` | Core, XR Interaction Toolkit 3.x | `InteractableCondition`. Compiles only when XRI 3.x is installed (version define `FRAMEWORK_XR_INTERACTION_TOOLKIT`). |
 | `Framework.Tasks` | Audio | Scene-authored `Task` components that need nothing from the core package: `Task`, `GuidedTask` (audio, reminders, subtasks, hints, pause, with the completion left to the subclass), `AudioTask`, subtasks. Derive from `GuidedTask` for a task that completes some other way, such as a quiz answer. |
-| `Framework.Tasks.Interaction` | Tasks, Audio, `Framework.CheckPoints` and `Framework.Outline` from `com.vishnu.framework.core` | The tasks that use check points and outlines: `ActionTask` (a `GuidedTask` that completes when all its check points are checked), `TrackCheckPoint` and the highlight subtasks. |
+| `Framework.Tasks.Interaction` | Tasks, `Framework.CheckPoints` and `Framework.Outline` from `com.vishnu.framework.core` | The tasks that use check points and outlines: `ActionTask` (a `GuidedTask` that completes when all its check points are checked), `TrackCheckPoint` and the highlight subtasks. |
 | `Framework.Audio` | | Narration playback for tasks. |
 
 Requires Unity 2022.3 or newer and the Universal Render Pipeline.

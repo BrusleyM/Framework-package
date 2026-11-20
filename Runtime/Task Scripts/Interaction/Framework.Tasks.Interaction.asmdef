@@ -3,7 +3,6 @@
     "rootNamespace": "Framework.Tasks",
     "references": [
         "Framework.Tasks",
-        "Framework.Audio",
         "Framework.CheckPoints",
         "Framework.Outline"
     ],

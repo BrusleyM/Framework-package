@@ -1,6 +1,7 @@
 using System.Linq;
 using Framework.Tasks;
 using NUnit.Framework;
+using UnityEditor.Compilation;
 using UnityEngine;
 
 namespace Framework.Sequencing.Tests
@@ -17,7 +18,7 @@ namespace Framework.Sequencing.Tests
             _host = new GameObject("host");
             _task = _host.AddComponent<AnswerTask>();
             _guidance = _host.AddComponent<RecordingSubtask>();
-            typeof(GuidedTask).GetField("_subTasks", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).SetValue(_task, new GameObjectTask[] { _guidance });
+            PrivateMembers.SetField(_task, "_subTasks", new GameObjectTask[] { _guidance });
         }
 
         [TearDown]
@@ -75,12 +76,34 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
-        public void The_task_assembly_does_not_depend_on_check_points_or_outlines()
+        public void Ending_completion_tracking_before_it_began_does_not_throw()
         {
-            var referenced = typeof(GuidedTask).Assembly.GetReferencedAssemblies().Select(assembly => assembly.Name).ToList();
+            Assert.DoesNotThrow(() => PrivateMembers.Invoke(_task, "OnDisable"));
+            Assert.That(_task.EndedTracking, Is.EqualTo(1));
+        }
 
-            Assert.That(referenced, Does.Not.Contain("Framework.CheckPoints"));
-            Assert.That(referenced, Does.Not.Contain("Framework.Outline"));
+        [Test]
+        public void Skipping_a_task_ends_the_tracking_but_does_not_reset_it()
+        {
+            _task.StartTask();
+            var resetsBefore = _task.ResetTracking;
+
+            _task.Skip();
+
+            Assert.That(_task.IsSkip, Is.True);
+            Assert.That(_task.ResetTracking, Is.EqualTo(resetsBefore));
+        }
+
+        [Test]
+        public void The_task_assembly_is_declared_without_the_check_point_and_outline_assemblies()
+        {
+            var tasks = CompilationPipeline.GetAssemblies(AssembliesType.PlayerWithoutTestAssemblies).Single(assembly => assembly.name == "Framework.Tasks");
+
+            var declared = tasks.assemblyReferences.Select(assembly => assembly.name).ToList();
+
+            Assert.That(declared, Does.Contain("Framework.Audio"));
+            Assert.That(declared, Does.Not.Contain("Framework.CheckPoints"));
+            Assert.That(declared, Does.Not.Contain("Framework.Outline"));
         }
 
         private sealed class AnswerTask : GuidedTask
