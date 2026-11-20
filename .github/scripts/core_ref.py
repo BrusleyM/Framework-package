@@ -13,10 +13,10 @@ class CoreRefError(Exception):
 
 
 def core_version(manifest):
-    version = manifest.get("dependencies", {}).get(CORE_PACKAGE, "")
+    version = manifest.get("requiresCore", "")
     version = version.strip().lstrip("^~=v")
     if not version:
-        raise CoreRefError(f"package.json does not declare a dependency on {CORE_PACKAGE}.")
+        raise CoreRefError(f"package.json does not declare requiresCore, the {CORE_PACKAGE} version this package needs.")
     return version
 
 
