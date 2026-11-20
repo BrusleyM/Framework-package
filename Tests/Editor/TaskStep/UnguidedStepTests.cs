@@ -353,6 +353,60 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
+        public void Skipping_the_step_raises_the_complete_event_of_the_tasks_it_skipped()
+        {
+            var raised = 0;
+            _second.OnCompleteTask.AddListener(() => raised++);
+            var step = EnterStep();
+            _first.Finish();
+
+            step.Exit(ExitReason.Skipped);
+
+            Assert.That(raised, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void A_listener_that_cancels_the_step_while_tasks_are_being_acknowledged_stops_further_acknowledgements()
+        {
+            var reports = new List<bool>();
+            var step = NewStep();
+            step.AllTasksCompleted += reports.Add;
+            _first.FinishWhenStarted = true;
+            _second.FinishWhenStarted = true;
+            _first.OnCompleteTask.AddListener(() => step.Exit(ExitReason.Cancelled));
+
+            step.Enter();
+            step.Advance(0.1f);
+
+            Assert.That(step.CompletedCount, Is.EqualTo(1));
+            Assert.That(reports, Is.Empty);
+            Assert.That(_finishes, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void A_task_without_a_hint_of_its_own_is_passed_over_when_a_hint_is_requested()
+        {
+            _first.NoHint = true;
+            var step = EnterStep();
+
+            var shown = step.RequestHint();
+
+            Assert.That(shown, Is.True);
+            Assert.That(_first.HintShowCount, Is.EqualTo(0));
+            Assert.That(_second.HintShowCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void A_hint_request_when_no_open_task_has_a_hint_shows_nothing()
+        {
+            _first.NoHint = true;
+            _second.NoHint = true;
+            var step = EnterStep();
+
+            Assert.That(step.RequestHint(), Is.False);
+        }
+
+        [Test]
         public void Cancelling_the_step_cancels_the_open_tasks_and_takes_the_hint_down()
         {
             var step = EnterStep();
@@ -424,6 +478,8 @@ namespace Framework.Sequencing.Tests
 
             public override bool IsSettling => Settling;
             public override bool IsGuidanceOnly => GuidanceOnly;
+            public override bool HasHint => !NoHint;
+            public bool NoHint { get; set; }
 
             public void Finish() => TaskComplete();
 

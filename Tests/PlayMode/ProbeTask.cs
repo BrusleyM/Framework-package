@@ -19,6 +19,8 @@ namespace Framework.Sequencing.Tests
 
         public override bool IsGuidanceOnly => GuidanceOnly;
 
+        public override bool HasHint => true;
+
         public override void StartTaskUnguided() => UnguidedStartCount++;
 
         public override void ShowHint() => HintShowCount++;

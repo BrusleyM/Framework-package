@@ -30,6 +30,7 @@ namespace Framework.Tasks
         public CheckPointsParent CheckPointsParent => _checkPoints;
         public GameObjectTask CurrentSubtask { get; private set; }
         public override bool IsSettling => IsFeedbackAudioPlaying();
+        public override bool HasHint => true;
 
         public override void PauseTask()
         {
@@ -102,7 +103,12 @@ namespace Framework.Tasks
             }
 
             StopEverythingInProgress();
-            StopShowingHint();
+            if (_isShowingHint)
+            {
+                StopShowingHint();
+                _audioPlayer?.Stop();
+            }
+
             PlayFeedbackAudio();
             MarkComplete();
         }

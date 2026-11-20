@@ -143,6 +143,7 @@ namespace Framework.Sequencing
                 if (reason == ExitReason.Skipped)
                 {
                     task.Skip();
+                    task.OnCompleteTask.Invoke();
                 }
                 else
                 {
@@ -179,6 +180,11 @@ namespace Framework.Sequencing
 
             foreach (var task in _tasks.ToArray())
             {
+                if (!IsWaiting)
+                {
+                    return;
+                }
+
                 if (task.IsComplete && _acknowledged.Add(task))
                 {
                     Acknowledge(task);
@@ -227,10 +233,20 @@ namespace Framework.Sequencing
 
             foreach (var task in _tasks.ToArray())
             {
+                if (!IsWaiting)
+                {
+                    return;
+                }
+
                 if (_acknowledged.Add(task))
                 {
                     Acknowledge(task);
                 }
+            }
+
+            if (!IsWaiting)
+            {
+                return;
             }
 
             _isAllComplete = true;
@@ -273,7 +289,7 @@ namespace Framework.Sequencing
         {
             foreach (var task in _tasks)
             {
-                if (!task.IsComplete)
+                if (!task.IsComplete && task.HasHint)
                 {
                     return task;
                 }

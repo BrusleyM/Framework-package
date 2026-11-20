@@ -21,6 +21,7 @@ namespace Framework.Tasks
         public UnityEvent OnCompleteTask => _onCompleteTask;
         public virtual bool IsSettling => false;
         public virtual bool IsGuidanceOnly => false;
+        public virtual bool HasHint => false;
 
         public event Action Completed;
 

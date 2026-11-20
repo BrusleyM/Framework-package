@@ -26,21 +26,27 @@ namespace Framework.Sequencing
         private SequenceRunner _runner;
         private Coroutine _clock;
         private AudioPlayer _audioPlayer;
+        private readonly List<UnguidedStep> _unguidedSteps = new List<UnguidedStep>();
         private GuidanceMode _appliedMode;
-        private UnguidedStep _lastUnguidedStep;
+        private bool _hasApplied;
+        private bool _runnerCameFromTaskList;
+        private int _leadingStepCount;
+        private Coroutine _modeRestart;
 
         public GuidanceMode Mode => _mode;
         public List<Task> TaskList => _taskList;
-        public IReadOnlyList<Task> CompletionOrder => (ActiveUnguidedStep ?? _lastUnguidedStep)?.CompletionOrder;
+        public IReadOnlyList<Task> CompletionOrder => CombinedCompletionOrder();
         public event System.Action<GuidanceMode> ModeChanged;
         public event System.Action<Task, int> UnguidedTaskCompleted;
         public event System.Action<bool> UnguidedCompleted;
         public SequenceRunner Runner => _runner;
         public Task CurrentTask => (ActiveTaskRunner?.CurrentStep as TaskStep)?.Task;
         public string CurrentStageName => (_runner?.CurrentStep as StageStep)?.Name;
-        public int CurrentStageIndex => _runner != null ? _runner.CurrentIndex : -1;
+        public int CurrentStageIndex => _runner != null && !(_runner.CurrentStep is AudioStep) ? _runner.CurrentIndex - _leadingStepCount : -1;
         public bool HasRun => _runner != null && _runner.State != SequenceState.Idle;
         public bool IsRunning => _runner != null && _runner.IsInProgress;
+
+        private const string IntroStepName = "Intro";
 
         private UnguidedStep ActiveUnguidedStep => ActiveTaskRunner?.CurrentStep as UnguidedStep;
 
@@ -63,10 +69,21 @@ namespace Framework.Sequencing
                 return;
             }
 
-            Play(BuildRunnerFromTaskList(includeIntro: true));
+            PlayTaskList(includeIntro: true);
         }
 
         public void Play(SequenceRunner runner)
+        {
+            Start(runner, leadingStepCount: 0, cameFromTaskList: false);
+        }
+
+        private void PlayTaskList(bool includeIntro)
+        {
+            var runner = BuildRunnerFromTaskList(includeIntro, out var leadingStepCount);
+            Start(runner, leadingStepCount, cameFromTaskList: true);
+        }
+
+        private void Start(SequenceRunner runner, int leadingStepCount, bool cameFromTaskList)
         {
             if (!isActiveAndEnabled)
             {
@@ -75,6 +92,8 @@ namespace Framework.Sequencing
 
             Cancel();
 
+            _runnerCameFromTaskList = cameFromTaskList;
+            _leadingStepCount = leadingStepCount;
             _runner = runner;
             _runner.Faulted += LogFault;
             EnsureClockIsRunning();
@@ -83,20 +102,24 @@ namespace Framework.Sequencing
 
         public void SetMode(GuidanceMode mode)
         {
-            if (mode == _appliedMode)
+            if (!_hasApplied || mode == _appliedMode)
             {
                 _mode = mode;
                 return;
             }
 
-            var wasRunning = IsRunning;
+            var shouldRestart = IsRunning && _runnerCameFromTaskList && isActiveAndEnabled;
+            var wasPaused = _runner != null && _runner.State == SequenceState.Paused;
+            var wasInIntro = _runner?.CurrentStep is AudioStep step && step.Name == IntroStepName;
             Cancel();
+            _unguidedSteps.Clear();
             _mode = mode;
             _appliedMode = mode;
             ModeChanged?.Invoke(mode);
-            if (wasRunning && isActiveAndEnabled)
+            if (shouldRestart)
             {
-                Play(BuildRunnerFromTaskList(includeIntro: false));
+                StopModeRestart();
+                _modeRestart = StartCoroutine(RestartInNewModeNextFrame(wasInIntro, wasPaused));
             }
         }
 
@@ -108,11 +131,11 @@ namespace Framework.Sequencing
 
         public void SkipCurrentTask() => ActiveTaskRunner?.SkipCurrentStep();
 
-        public void GoBack() => ActiveTaskRunner?.GoBack();
+        public void GoBack() => GoBackWithin(ActiveTaskRunner);
 
         public void SkipCurrentStage() => _runner?.SkipCurrentStep();
 
-        public void GoBackStage() => _runner?.GoBack();
+        public void GoBackStage() => GoBackWithin(_runner);
 
         public void RestartCurrentStage() => _runner?.RestartCurrentStep();
 
@@ -132,6 +155,7 @@ namespace Framework.Sequencing
         public void Cancel()
         {
             StopClock();
+            StopModeRestart();
 
             if (_runner == null)
             {
@@ -147,11 +171,12 @@ namespace Framework.Sequencing
         private void Awake()
         {
             _appliedMode = _mode;
+            _hasApplied = true;
         }
 
         private void OnValidate()
         {
-            if (Application.isPlaying && _mode != _appliedMode)
+            if (Application.isPlaying && _hasApplied && _mode != _appliedMode)
             {
                 var requested = _mode;
                 _mode = _appliedMode;
@@ -164,13 +189,16 @@ namespace Framework.Sequencing
             Cancel();
         }
 
-        private SequenceRunner BuildRunnerFromTaskList(bool includeIntro)
+        private SequenceRunner BuildRunnerFromTaskList(bool includeIntro, out int leadingStepCount)
         {
             var audioPlayer = ObtainAudioPlayer();
             var steps = new List<ISequenceStep>();
+            _unguidedSteps.Clear();
+            leadingStepCount = 0;
             if (includeIntro && HasClips(_introAudio, audioPlayer))
             {
-                steps.Add(new AudioStep("Intro", _introAudio, audioPlayer));
+                steps.Add(new AudioStep(IntroStepName, _introAudio, audioPlayer));
+                leadingStepCount = 1;
             }
 
             steps.AddRange(TaskAndStageSteps(audioPlayer));
@@ -227,7 +255,7 @@ namespace Framework.Sequencing
                 var unguided = new UnguidedStep(stepName, tasks, audioPlayer, _hintAfterIdleSeconds);
                 unguided.TaskCompleted += (task, position) => UnguidedTaskCompleted?.Invoke(task, position);
                 unguided.AllTasksCompleted += inOrder => UnguidedCompleted?.Invoke(inOrder);
-                _lastUnguidedStep = unguided;
+                _unguidedSteps.Add(unguided);
                 steps.Add(unguided);
                 return steps;
             }
@@ -263,6 +291,64 @@ namespace Framework.Sequencing
             if (_clock == null)
             {
                 _clock = StartCoroutine(TickWhileInProgress());
+            }
+        }
+
+        private IReadOnlyList<Task> CombinedCompletionOrder()
+        {
+            if (_unguidedSteps.Count == 0)
+            {
+                return null;
+            }
+
+            if (_unguidedSteps.Count == 1)
+            {
+                return _unguidedSteps[0].CompletionOrder;
+            }
+
+            var combined = new List<Task>();
+            foreach (var step in _unguidedSteps)
+            {
+                combined.AddRange(step.CompletionOrder);
+            }
+            return combined;
+        }
+
+        private void GoBackWithin(SequenceRunner runner)
+        {
+            if (runner == null)
+            {
+                return;
+            }
+
+            var isTopLevel = runner == _runner;
+            if (isTopLevel && _leadingStepCount > 0 && runner.CurrentIndex <= _leadingStepCount)
+            {
+                runner.RestartCurrentStep();
+            }
+            else
+            {
+                runner.GoBack();
+            }
+        }
+
+        private IEnumerator RestartInNewModeNextFrame(bool includeIntro, bool pauseAgain)
+        {
+            yield return null;
+            _modeRestart = null;
+            PlayTaskList(includeIntro);
+            if (pauseAgain)
+            {
+                _runner.Pause();
+            }
+        }
+
+        private void StopModeRestart()
+        {
+            if (_modeRestart != null)
+            {
+                StopCoroutine(_modeRestart);
+                _modeRestart = null;
             }
         }
 

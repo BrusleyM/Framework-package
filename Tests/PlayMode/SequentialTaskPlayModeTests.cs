@@ -204,6 +204,7 @@ namespace Framework.Sequencing.Tests
 
             _sequence.SetMode(GuidanceMode.Unguided);
             yield return null;
+            yield return null;
 
             CollectionAssert.AreEqual(new List<GuidanceMode> { GuidanceMode.Unguided }, reported);
             Assert.AreEqual(1, task.CancelCount);
@@ -316,6 +317,7 @@ namespace Framework.Sequencing.Tests
 
             _sequence.SetMode(GuidanceMode.Unguided);
             yield return null;
+            yield return null;
 
             Assert.AreEqual(1, task.UnguidedStartCount);
         }
@@ -330,6 +332,143 @@ namespace Framework.Sequencing.Tests
             yield return null;
 
             Assert.AreEqual(1, _sequence.Runner.StepCount);
+        }
+
+        [UnityTest]
+        public IEnumerator The_stage_index_is_minus_one_during_the_intro_and_counts_from_the_first_task_after_it()
+        {
+            AddTask("first");
+            AddTask("second");
+            UseAudio(intro: new[] { Clip("intro", 0.3f) });
+            _sequence.Run();
+            yield return null;
+            var duringIntro = _sequence.CurrentStageIndex;
+
+            yield return new WaitForSeconds(0.8f);
+
+            Assert.AreEqual(-1, duringIntro);
+            Assert.AreEqual(0, _sequence.CurrentStageIndex);
+        }
+
+        [UnityTest]
+        public IEnumerator Going_back_from_the_first_task_restarts_it_and_does_not_replay_the_intro()
+        {
+            var first = AddTask("first");
+            UseAudio(intro: new[] { Clip("intro", 0.2f) });
+            _sequence.Run();
+            yield return new WaitForSeconds(0.6f);
+
+            _sequence.GoBack();
+            yield return null;
+
+            Assert.AreSame(first, _sequence.CurrentTask);
+            Assert.AreEqual(2, first.StartCount);
+        }
+
+        [UnityTest]
+        public IEnumerator Changing_the_mode_while_paused_restarts_in_the_new_mode_still_paused()
+        {
+            AddTask("only");
+            _sequence.Run();
+            yield return null;
+            _sequence.Pause();
+
+            _sequence.SetMode(GuidanceMode.Unguided);
+            yield return null;
+            yield return null;
+
+            Assert.AreEqual(SequenceState.Paused, _sequence.Runner.State);
+        }
+
+        [UnityTest]
+        public IEnumerator Changing_the_mode_during_the_intro_keeps_the_intro()
+        {
+            AddTask("only");
+            UseAudio(intro: new[] { Clip("intro", 1f) });
+            _sequence.Run();
+            yield return null;
+
+            _sequence.SetMode(GuidanceMode.Unguided);
+            yield return null;
+            yield return null;
+
+            Assert.AreEqual("Intro", _sequence.Runner.CurrentStep.Name);
+        }
+
+        [UnityTest]
+        public IEnumerator Changing_the_mode_cancels_a_custom_runner_without_replacing_it_with_the_task_list()
+        {
+            var task = AddTask("only");
+            _sequence.Play(Sequence.Named("custom").Wait(5f).Build());
+            yield return null;
+
+            _sequence.SetMode(GuidanceMode.Unguided);
+            yield return null;
+            yield return null;
+
+            Assert.AreEqual(SequenceState.Cancelled, _sequence.Runner.State);
+            Assert.AreEqual(0, task.UnguidedStartCount);
+        }
+
+        [UnityTest]
+        public IEnumerator Changing_the_mode_from_a_task_complete_listener_starts_the_new_run_once()
+        {
+            var task = AddTask("only");
+            task.OnCompleteTask.AddListener(() => _sequence.SetMode(GuidanceMode.Unguided));
+            _sequence.Run();
+            yield return null;
+
+            task.Finish();
+            yield return null;
+            yield return null;
+            yield return null;
+
+            Assert.AreEqual(1, task.UnguidedStartCount);
+            Assert.AreEqual(0, task.CancelCount);
+        }
+
+        [UnityTest]
+        public IEnumerator The_completion_order_is_gone_after_switching_back_to_guided()
+        {
+            var task = AddTask("only");
+            _sequence.SetMode(GuidanceMode.Unguided);
+            _sequence.Run();
+            yield return null;
+            task.Finish();
+            yield return null;
+
+            _sequence.SetMode(GuidanceMode.Guided);
+
+            Assert.IsNull(_sequence.CompletionOrder);
+        }
+
+        [UnityTest]
+        public IEnumerator With_stages_the_completion_order_covers_every_stage()
+        {
+            var first = AddStageWithTask("stage one");
+            var second = AddStageWithTask("stage two");
+            _sequence.SetMode(GuidanceMode.Unguided);
+            _sequence.Run();
+            yield return null;
+
+            first.Finish();
+            yield return null;
+            second.Finish();
+            yield return null;
+
+            CollectionAssert.AreEqual(new List<Task> { first, second }, new List<Task>(_sequence.CompletionOrder));
+        }
+
+        private ProbeTask AddStageWithTask(string stageName)
+        {
+            var stageObject = new GameObject(stageName);
+            stageObject.transform.SetParent(_host.transform);
+            var stage = stageObject.AddComponent<TaskStage>();
+            var task = stageObject.AddComponent<ProbeTask>();
+            task.Label = stageName;
+            stage.AddTask(task);
+            _sequence.AddStage(stage);
+            return task;
         }
 
         private void UseAudio(MyClip[] intro = null, MyClip[] complete = null)
