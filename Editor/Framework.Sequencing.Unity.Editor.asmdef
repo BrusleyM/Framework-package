@@ -4,7 +4,8 @@
     "references": [
         "Framework.Sequencing.Core",
         "Framework.Sequencing.Unity",
-        "Framework.Tasks"
+        "Framework.Tasks",
+        "Framework.Core.Editor"
     ],
     "includePlatforms": [
         "Editor"

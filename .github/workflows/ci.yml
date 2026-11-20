@@ -122,6 +122,7 @@ jobs:
           --unity "${{ matrix.unity }}"
           --urp "${{ matrix.urp }}"
           --test-framework "${{ matrix.testFramework }}"
+          --import-samples
           ${{ matrix.interactionToolkit != '' && format('--xr-interaction-toolkit "{0}"', matrix.interactionToolkit) || '' }}
       - uses: actions/cache@v4
         with:

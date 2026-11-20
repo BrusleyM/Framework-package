@@ -146,13 +146,13 @@ No code is needed to author a sequence. Everything is a component you add and wi
 
 `Run()` does nothing while a sequence is in progress, and starts over once it has ended. `Play(runner)` cancels the current runner first. `Pause`, `Resume`, `SkipCurrentTask`, `GoBack`, `Restart` and `Cancel` act on the running sequence. The component must be active and enabled to run.
 
-The Test scene at `Samples/Scenes/Test scene.unity` is built this way. Open it and select the object that holds the `SequentialTask` to see a working task list.
+The Test scene sample (see Sample) is built this way. Open it and select the object that holds the `SequentialTask` to see a working task list.
 
 ## Developer inspector
 
 In play mode the `SequentialTask` inspector shows the sequence state, the previous, current and next stage and step, and buttons for Back, Skip and Restart (per stage), Pause, Resume, Restart and Cancel. It updates on step and state events. It is editor only and adds nothing to builds. `StepWindow.Of(runner)` gives the same previous, current and next names to your own tools.
 
-The Test scene lives at `Samples/Scenes/Test scene.unity`. The `Samples` folder is imported and compiled with the package; it is not offered as a Package Manager sample.
+The Test scene is the optional Package Manager sample (see Sample).
 
 ## Write your own step
 
@@ -170,6 +170,10 @@ public sealed class ShowHintStep : StepBase
 ```
 
 Call `Finish()` from any event handler to complete the step, or `Fail(exception)` to fault the sequence. Override `OnPause` and `OnResume` if the step has its own timers or audio to hold. `OnExit` runs on every exit path (completed, skipped, rewound, restarted, cancelled), so clean up there.
+
+## Sample
+
+The Test scene is an optional sample (a Robot instructor, snap points, check points, highlights, guided and unguided mode, and the tests of its robot follow rules). It does not install with the package: import it in the Package Manager (select Framework Sequencer, open the Samples tab, press Import) and it is copied to `Assets/Samples/Framework Sequencer/<version>/Test scene`. When the package is a folder inside Assets (a submodule, for example) Unity does not list its samples, so use Tools > Framework > Import sequencer samples, which copies it to `Assets/Samples/Framework Sequencer/Test scene`. The scene needs the core package. Open `Scenes/Test scene.unity` from the imported folder.
 
 ## Installation
 
