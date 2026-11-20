@@ -411,6 +411,34 @@ namespace Framework.Sequencing.Tests
             Assert.That(raised, Is.EqualTo(0));
         }
 
+        [Test]
+        public void Pausing_the_group_pauses_the_open_tasks_and_resuming_resumes_them()
+        {
+            _group.StartTask();
+            _first.Finish();
+
+            _group.PauseTask();
+            _group.ResumeTask();
+
+            Assert.That(_second.PauseCount, Is.EqualTo(1));
+            Assert.That(_second.ResumeCount, Is.EqualTo(1));
+            Assert.That(_first.PauseCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void A_hint_cannot_be_requested_while_the_group_is_paused_and_works_again_after_resuming()
+        {
+            _group.StartTask();
+            _group.PauseTask();
+
+            var whilePaused = _group.RequestHint();
+            _group.ResumeTask();
+            var afterResume = _group.RequestHint();
+
+            Assert.That(whilePaused, Is.False);
+            Assert.That(afterResume, Is.True);
+        }
+
         private static void Assign(FreeGroupTask group, params Task[] tasks)
         {
             var serialized = new SerializedObject(group);
@@ -430,6 +458,8 @@ namespace Framework.Sequencing.Tests
             public int CancelCount { get; private set; }
             public int HintShowCount { get; private set; }
             public int HintHideCount { get; private set; }
+            public int PauseCount { get; private set; }
+            public int ResumeCount { get; private set; }
             public bool FinishWhenStarted { get; set; }
             public bool Settling { get; set; }
 
@@ -449,6 +479,10 @@ namespace Framework.Sequencing.Tests
             }
 
             public override void CancelTask() => CancelCount++;
+
+            public override void PauseTask() => PauseCount++;
+
+            public override void ResumeTask() => ResumeCount++;
 
             public override void ShowHint() => HintShowCount++;
 

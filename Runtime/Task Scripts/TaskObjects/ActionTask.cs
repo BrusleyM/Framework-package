@@ -23,13 +23,27 @@ namespace Framework.Tasks
         private bool _isAdvancingSubtasks;
         private bool _advanceRequested;
         private bool _isShowingHint;
+        private bool _isPaused;
 
         public CheckPointsParent CheckPointsParent => _checkPoints;
         public GameObjectTask CurrentSubtask { get; private set; }
         public override bool IsSettling => IsFeedbackAudioPlaying();
 
+        public override void PauseTask()
+        {
+            _isPaused = true;
+            _audioPlayer?.Pause();
+        }
+
+        public override void ResumeTask()
+        {
+            _isPaused = false;
+            _audioPlayer?.Resume();
+        }
+
         public override void StartTaskUnguided()
         {
+            _isPaused = false;
             StopEverythingInProgress();
             _isShowingHint = false;
             LinkCheckPointsToThisTask();
@@ -62,6 +76,7 @@ namespace Framework.Tasks
 
         public override void StartTask()
         {
+            _isPaused = false;
             _isShowingHint = false;
             StopEverythingInProgress();
             LinkCheckPointsToThisTask();
@@ -199,7 +214,7 @@ namespace Framework.Tasks
             while (!IsComplete)
             {
                 yield return interval;
-                if (!IsComplete)
+                if (!IsComplete && !_isPaused)
                 {
                     PlayInstructionalAudio();
                 }

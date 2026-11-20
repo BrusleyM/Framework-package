@@ -286,6 +286,7 @@ Transform:
   - {fileID: 752176465}
   - {fileID: 705507995}
   - {fileID: 542270779}
+  - {fileID: 2097988659}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &218103590
@@ -331,7 +332,7 @@ GameObject:
   - component: {fileID: 235408597}
   - component: {fileID: 235408598}
   m_Layer: 0
-  m_Name: Tasks
+  m_Name: Guided tasks
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -354,7 +355,6 @@ Transform:
   - {fileID: 2040620478}
   - {fileID: 97669619}
   - {fileID: 1265898029}
-  - {fileID: 1553776717}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &235408598
@@ -375,7 +375,6 @@ MonoBehaviour:
   - {fileID: 2040620479}
   - {fileID: 97669620}
   - {fileID: 1265898031}
-  - {fileID: 1172819760}
   _stages: []
 --- !u!1 &261821943
 GameObject:
@@ -1087,6 +1086,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 542270779}
+  - component: {fileID: 542270781}
+  - component: {fileID: 542270780}
   m_Layer: 0
   m_Name: Free order zone
   m_TagString: Untagged
@@ -1109,6 +1110,40 @@ Transform:
   m_Children: []
   m_Father: {fileID: 161997955}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &542270780
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 542270778}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31613f00660a4c02b7015669649d779b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _section: 1
+--- !u!65 &542270781
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 542270778}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 12, y: 6, z: 10}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &556097828
 GameObject:
   m_ObjectHideFlags: 0
@@ -2197,7 +2232,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 54517013758958244, guid: f7541587e82c0e44c970603d3d6a399f, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.21509922
+      value: -4.25
       objectReference: {fileID: 0}
     - target: {fileID: 54517013758958244, guid: f7541587e82c0e44c970603d3d6a399f, type: 3}
       propertyPath: m_LocalPosition.y
@@ -2205,7 +2240,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 54517013758958244, guid: f7541587e82c0e44c970603d3d6a399f, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -3.117271
+      value: -4
       objectReference: {fileID: 0}
     - target: {fileID: 54517013758958244, guid: f7541587e82c0e44c970603d3d6a399f, type: 3}
       propertyPath: m_LocalRotation.w
@@ -2243,6 +2278,10 @@ PrefabInstance:
       propertyPath: lookAtTarget
       value: 
       objectReference: {fileID: 697434737}
+    - target: {fileID: 5723252859788503726, guid: f7541587e82c0e44c970603d3d6a399f, type: 3}
+      propertyPath: locations.Array.size
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -3299,7 +3338,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _currentMode: 0
-  _currentSequentialTask: {fileID: 235408598}
+  _guidedSequence: {fileID: 235408598}
+  _unguidedSequence: {fileID: 1962085837}
+  _instructor: {fileID: 813433828}
+  _instructorVoice: {fileID: 1739773246}
+  _guidedZoneCentre: {fileID: 2097988659}
+  _unguidedZoneCentre: {fileID: 542270779}
 --- !u!1 &1254919544
 GameObject:
   m_ObjectHideFlags: 0
@@ -3382,19 +3426,7 @@ MonoBehaviour:
   _taskName: move block 3
   _onCompleteTask:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 813433828}
-        m_TargetAssemblyTypeName: MoveTo, Framework.Samples.BaseModels
-        m_MethodName: MoveZoneTo
-        m_Mode: 2
-        m_Arguments:
-          m_ObjectArgument: {fileID: 542270779}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Transform, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
   _instructionalAudio:
     name: last box
     clip: {fileID: 8300000, guid: e772653cb0765964a8604d33da44ced1, type: 3}
@@ -4381,7 +4413,7 @@ Transform:
   - {fileID: 1476583231}
   - {fileID: 530842519}
   - {fileID: 1172819762}
-  m_Father: {fileID: 235408597}
+  m_Father: {fileID: 1962085838}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1561649001
 GameObject:
@@ -5399,6 +5431,55 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &1962085836
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1962085838}
+  - component: {fileID: 1962085837}
+  m_Layer: 0
+  m_Name: Unguided tasks
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1962085837
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1962085836}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b333a615fd6f8aa46a969df5b23b8d04, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _audioSource: {fileID: 1739773246}
+  _taskList:
+  - {fileID: 1172819760}
+  _stages: []
+--- !u!4 &1962085838
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1962085836}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1553776717}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1973752850
 GameObject:
   m_ObjectHideFlags: 0
@@ -5796,6 +5877,73 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2096145377}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &2097988658
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2097988659}
+  - component: {fileID: 2097988661}
+  - component: {fileID: 2097988660}
+  m_Layer: 0
+  m_Name: Guided zone
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2097988659
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2097988658}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2.5, y: 1.5, z: -7.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 161997955}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2097988660
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2097988658}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31613f00660a4c02b7015669649d779b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _section: 0
+--- !u!65 &2097988661
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2097988658}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 12, y: 6, z: 10}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &2100095230
 GameObject:
   m_ObjectHideFlags: 0
@@ -6042,3 +6190,4 @@ SceneRoots:
   - {fileID: 2106389230}
   - {fileID: 161997955}
   - {fileID: 813433827}
+  - {fileID: 1962085838}

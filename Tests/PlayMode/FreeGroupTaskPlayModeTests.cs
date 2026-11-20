@@ -128,6 +128,23 @@ namespace Framework.Sequencing.Tests
             Assert.That(_first.HintShowCount, Is.EqualTo(1));
         }
 
+        [UnityTest]
+        public IEnumerator The_idle_hint_waits_while_the_sequence_is_paused_and_comes_after_resuming()
+        {
+            SetPrivate(_group, "_hintAfterIdleSeconds", 0.3f);
+            _sequence.Run();
+            yield return null;
+
+            _sequence.Pause();
+            yield return new WaitForSeconds(0.6f);
+            var hintedWhilePaused = _first.HintShowCount;
+            _sequence.Resume();
+            yield return new WaitForSeconds(0.6f);
+
+            Assert.That(hintedWhilePaused, Is.EqualTo(0));
+            Assert.That(_first.HintShowCount, Is.EqualTo(1));
+        }
+
         private static void SetPrivate(object target, string fieldName, object value)
         {
             var field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);

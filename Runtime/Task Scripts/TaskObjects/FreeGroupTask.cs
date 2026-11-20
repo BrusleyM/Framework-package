@@ -35,6 +35,7 @@ namespace Framework.Tasks
         private bool _isRunning;
         private bool _isStarting;
         private bool _hasPlayedFeedback;
+        private bool _isPaused;
 
         public UnityEvent<Task> OnTaskCompleted => _onTaskCompleted;
         public UnityEvent<Task, int> OnTaskCompletedAtPosition => _onTaskCompletedAtPosition;
@@ -78,6 +79,7 @@ namespace Framework.Tasks
             StopEverythingInProgress();
             _hintedTask = null;
             _hasPlayedFeedback = false;
+            _isPaused = false;
             _isRunning = true;
             CollectDistinctTasks();
             _isStarting = true;
@@ -115,6 +117,36 @@ namespace Framework.Tasks
         public override void HideHint()
         {
             HideCurrentHint();
+        }
+
+        public override void PauseTask()
+        {
+            _isPaused = true;
+            StopIdleHintTimer();
+            foreach (var task in _running)
+            {
+                if (!task.IsComplete)
+                {
+                    task.PauseTask();
+                }
+            }
+        }
+
+        public override void ResumeTask()
+        {
+            _isPaused = false;
+            foreach (var task in _running)
+            {
+                if (!task.IsComplete)
+                {
+                    task.ResumeTask();
+                }
+            }
+
+            if (_isRunning)
+            {
+                RestartIdleHintTimer();
+            }
         }
 
         public override void TaskComplete()
@@ -337,7 +369,7 @@ namespace Framework.Tasks
 
         private bool ShowHintOn(Task task, bool replayIfAlreadyShown)
         {
-            if (!_isRunning || task == null)
+            if (!_isRunning || _isPaused || task == null)
             {
                 return false;
             }
@@ -381,7 +413,7 @@ namespace Framework.Tasks
         private void RestartIdleHintTimer()
         {
             StopIdleHintTimer();
-            if (_hintAfterIdleSeconds > 0f && isActiveAndEnabled)
+            if (_hintAfterIdleSeconds > 0f && !_isPaused && isActiveAndEnabled)
             {
                 _idleHint = StartCoroutine(HintWhileIdle());
             }

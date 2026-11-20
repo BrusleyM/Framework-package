@@ -38,6 +38,9 @@ public class MoveTo : MonoBehaviour
     [SerializeField]
     private float _arrivalDistance = 0.15f;
 
+    [SerializeField]
+    private bool _followsLeader = true;
+
     private Vector3 _homePosition;
     private Vector3 _repositionTarget;
     private bool _isRepositioning;
@@ -51,6 +54,10 @@ public class MoveTo : MonoBehaviour
         if (locations.Length > 0)
         {
             targetPosition = locations[currentLocationIndex].position;
+        }
+        else
+        {
+            destinationReached = true;
         }
     }
 
@@ -114,6 +121,11 @@ public class MoveTo : MonoBehaviour
 
     void MaintainDistance()
     {
+        if (!_followsLeader)
+        {
+            return;
+        }
+
         if (!_isRepositioning)
         {
             BeginRepositioningWhenNeeded();
@@ -122,6 +134,15 @@ public class MoveTo : MonoBehaviour
         if (_isRepositioning)
         {
             MoveTowardsRepositionTarget();
+        }
+    }
+
+    public void SetFollowing(bool follows)
+    {
+        _followsLeader = follows;
+        if (!follows)
+        {
+            _isRepositioning = false;
         }
     }
 

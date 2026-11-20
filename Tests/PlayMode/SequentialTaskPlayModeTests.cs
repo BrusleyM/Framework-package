@@ -44,6 +44,21 @@ namespace Framework.Sequencing.Tests
         }
 
         [UnityTest]
+        public IEnumerator Pausing_and_resuming_the_sequence_pauses_and_resumes_the_task_that_is_running()
+        {
+            var task = AddTask("only");
+            _sequence.Run();
+            yield return null;
+
+            _sequence.Pause();
+            var pausedWhilePaused = task.PauseCount;
+            _sequence.Resume();
+
+            Assert.AreEqual(1, pausedWhilePaused);
+            Assert.AreEqual(1, task.ResumeCount);
+        }
+
+        [UnityTest]
         public IEnumerator A_timed_step_only_advances_while_the_sequence_is_not_paused()
         {
             _sequence.Play(Sequence.Named("timed").Wait(0.3f).Build());

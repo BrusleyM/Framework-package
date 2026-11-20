@@ -37,6 +37,14 @@ namespace Framework.Tasks
 
         public abstract void StartTask();
 
+        public virtual void PauseTask()
+        {
+        }
+
+        public virtual void ResumeTask()
+        {
+        }
+
         public virtual void StartTaskUnguided()
         {
             StartTask();
