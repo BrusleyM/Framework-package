@@ -54,6 +54,37 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
+        public void The_task_is_not_settling_while_only_its_instruction_plays()
+        {
+            _task.StartTask();
+
+            Assert.That(_task.IsSettling, Is.False);
+        }
+
+        [Test]
+        public void Completing_a_guided_task_without_a_feedback_clip_stops_its_instruction()
+        {
+            PrivateMembers.SetField(_task, "_feedbackAudioClip", null);
+            _task.StartTask();
+
+            _task.Answer();
+
+            Assert.That(_voice.IsPlaying, Is.False);
+            Assert.That(_task.IsSettling, Is.False);
+        }
+
+        [Test]
+        public void Feedback_that_another_owner_replaced_no_longer_counts_as_settling()
+        {
+            _task.StartTask();
+            _task.Answer();
+
+            _voice.Play(Clip("someone else").clip, new object());
+
+            Assert.That(_task.IsSettling, Is.False);
+        }
+
+        [Test]
         public void An_unguided_task_plays_no_feedback_when_it_completes()
         {
             _task.StartTaskUnguided();

@@ -99,6 +99,50 @@ namespace Framework.Sequencing.Tests
             Assert.That(_player.IsPlayingFor(_other), Is.False);
         }
 
+        [UnityTest]
+        public IEnumerator Playing_on_an_inactive_audio_source_skips_the_clip_and_still_raises_the_callback()
+        {
+            var finished = 0;
+            _source.enabled = false;
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("inactive"));
+
+            _player.Play(Clip(0.5f), _owner, () => finished++);
+            yield return null;
+
+            Assert.That(finished, Is.EqualTo(1));
+            Assert.That(_player.IsPlaying, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator A_second_player_on_the_same_source_takes_over_and_the_first_one_goes_quiet()
+        {
+            var firstFinished = 0;
+            _player.Play(Clip(1f), _owner, () => firstFinished++);
+            yield return null;
+
+            var second = new AudioPlayer(_source);
+            var secondFinished = 0;
+            second.Play(Clip(0.2f), _other, () => secondFinished++);
+            _player.Play(Clip(0.2f), _owner, () => firstFinished++);
+            yield return new WaitForSeconds(0.7f);
+
+            Assert.That(firstFinished, Is.EqualTo(0));
+            Assert.That(secondFinished, Is.EqualTo(1));
+            Assert.That(_player.IsPlaying, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator Stopping_after_the_audio_host_was_destroyed_does_not_throw()
+        {
+            _player.Play(Clip(1f), _owner);
+            yield return null;
+            Object.Destroy(_host);
+            yield return null;
+
+            Assert.DoesNotThrow(() => _player.Stop(_owner));
+            Assert.DoesNotThrow(() => _player.StopAll());
+        }
+
         private static AudioClip Clip(float seconds)
         {
             var samples = (int)(44100 * seconds);

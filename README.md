@@ -112,6 +112,7 @@ Narration goes through an `IVoicePlayer`. Every clip is played for an owner (the
 - `Stop(owner)`, `Pause(owner)`, `Resume(owner)` act only on the owner's audio; `IsPlayingFor(owner)` tells a task whether its own audio is still playing (that is what `ISettlingTask.IsSettling` reports). `StopAll()` is for the host.
 - `AudioPlayer` is the implementation on an `AudioSource` (the `SequentialTask` creates one from its Audio Source). It adds a hidden component that checks for the end of the clip only while something is playing, and does not treat a clip as finished while the application is unfocused.
 - `SequentialTask.UseVoicePlayer(player)` swaps the player. `ManualVoicePlayer` plays nothing and finishes a clip when you call `FinishCurrent()`, so audio logic can be tested without an audio device.
+- Only one `AudioPlayer` works per `AudioSource`: creating a second one for the same source takes over and the first goes quiet. If something other than the step or task calls `StopAll()` or plays for another owner while an `AudioStep` or `AudioTask` is mid-chain, that chain's callback is dropped and it will not finish, so only the host should do that, and then cancel the sequence.
 - A custom task plays with `_audioPlayer.Play(clip, this, onFinished)` and stops with `_audioPlayer.Stop(this)`.
 
 ## Build a sequence in the editor
