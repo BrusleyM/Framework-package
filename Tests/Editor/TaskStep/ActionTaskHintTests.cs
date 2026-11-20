@@ -118,7 +118,7 @@ namespace Framework.Sequencing.Tests
             _task.StartTaskUnguided();
             _task.ShowHint();
 
-            typeof(ActionTask).GetMethod("OnDisable", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(_task, null);
+            typeof(GuidedTask).GetMethod("OnDisable", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(_task, null);
             _task.ShowHint();
 
             Assert.That(_highlight.CancelCount, Is.EqualTo(1));
@@ -192,8 +192,17 @@ namespace Framework.Sequencing.Tests
 
         private static void SetPrivate(object target, string fieldName, object value)
         {
-            var field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
-            field.SetValue(target, value);
+            for (var type = target.GetType(); type != null; type = type.BaseType)
+            {
+                var field = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                if (field != null)
+                {
+                    field.SetValue(target, value);
+                    return;
+                }
+            }
+
+            throw new System.MissingFieldException(target.GetType().Name, fieldName);
         }
 
         private sealed class CountingSubtask : GameObjectTask

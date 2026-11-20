@@ -51,7 +51,17 @@ namespace Framework.Sequencing.Tests
 
         private void SetPrivate(string fieldName, object value)
         {
-            typeof(ActionTask).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(_task, value);
+            for (var type = _task.GetType(); type != null; type = type.BaseType)
+            {
+                var field = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                if (field != null)
+                {
+                    field.SetValue(_task, value);
+                    return;
+                }
+            }
+
+            throw new System.MissingFieldException(_task.GetType().Name, fieldName);
         }
 
         private static MyClip Clip(string name, float seconds)
