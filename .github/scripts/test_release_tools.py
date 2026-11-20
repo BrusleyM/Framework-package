@@ -291,6 +291,13 @@ class TestResultsTests(unittest.TestCase):
 
             self.assertEqual(["editmode-results.xml: no tests ran"], check_test_results.find_problems(files))
 
+    def test_a_result_file_that_is_not_valid_xml_is_reported_instead_of_crashing(self):
+        with tempfile.TemporaryDirectory() as folder:
+            broken = pathlib.Path(folder) / "editmode-results.xml"
+            broken.write_text("<test-run")
+
+            self.assertEqual(["editmode-results.xml: could not be read as test results"], check_test_results.find_problems([broken]))
+
     def test_missing_result_files_are_reported(self):
         self.assertEqual(["No test result files were found."], check_test_results.find_problems([]))
 

@@ -14,6 +14,12 @@ namespace Framework.Sequencing.Tests
         private readonly object _owner = new object();
         private readonly object _other = new object();
 
+        [UnitySetUp]
+        public IEnumerator RequireAnAudioDevice()
+        {
+            yield return AudioDevice.RequireOrIgnore();
+        }
+
         [SetUp]
         public void SetUp()
         {
