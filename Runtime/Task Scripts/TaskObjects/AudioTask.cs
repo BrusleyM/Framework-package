@@ -12,6 +12,9 @@ namespace Framework.Tasks
 
         private Coroutine _playback;
 
+        public override bool IsGuidanceOnly => true;
+        private bool _isPaused;
+
         public override void StartTask()
         {
             if (_audioClips.Count == 0)
@@ -28,7 +31,20 @@ namespace Framework.Tasks
                 return;
             }
 
+            _isPaused = false;
             _playback = StartCoroutine(PlayClipsOneAfterAnother());
+        }
+
+        public override void PauseTask()
+        {
+            _isPaused = true;
+            _audioPlayer?.Pause();
+        }
+
+        public override void ResumeTask()
+        {
+            _isPaused = false;
+            _audioPlayer?.Resume();
         }
 
         public override void Skip()
@@ -45,6 +61,7 @@ namespace Framework.Tasks
                 _playback = null;
             }
 
+            _isPaused = false;
             _audioPlayer?.Stop();
         }
 
@@ -58,7 +75,7 @@ namespace Framework.Tasks
                 }
 
                 _audioPlayer.LoadAndPlay(clip.clip);
-                yield return new WaitWhile(() => _audioPlayer.IsPlaying());
+                yield return new WaitWhile(() => _isPaused || _audioPlayer.IsPlaying());
             }
 
             _playback = null;

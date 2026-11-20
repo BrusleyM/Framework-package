@@ -133,6 +133,63 @@ namespace Framework.Sequencing.Tests
             Assert.That(_highlight.ExecuteCount, Is.EqualTo(1));
         }
 
+        [Test]
+        public void Starting_unguided_runs_the_setup_subtasks_and_leaves_the_guidance_ones()
+        {
+            var setup = AddSetupSubtask();
+
+            _task.StartTaskUnguided();
+
+            Assert.That(setup.ExecuteCount, Is.EqualTo(1));
+            Assert.That(_highlight.ExecuteCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Showing_the_hint_runs_only_the_guidance_subtasks_and_not_the_setup_again()
+        {
+            var setup = AddSetupSubtask();
+            _task.StartTaskUnguided();
+
+            _task.ShowHint();
+
+            Assert.That(setup.ExecuteCount, Is.EqualTo(1));
+            Assert.That(_highlight.ExecuteCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Hiding_the_hint_cancels_the_guidance_subtasks_but_keeps_the_setup_in_place()
+        {
+            var setup = AddSetupSubtask();
+            _task.StartTaskUnguided();
+            _task.ShowHint();
+
+            _task.HideHint();
+
+            Assert.That(_highlight.CancelCount, Is.EqualTo(1));
+            Assert.That(setup.CancelCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Guided_start_runs_the_setup_and_guidance_subtasks_one_after_another()
+        {
+            var setup = AddSetupSubtask();
+            setup.CompleteWhenExecuted = true;
+            _highlight.CompleteWhenExecuted = true;
+
+            _task.StartTask();
+
+            Assert.That(_highlight.ExecuteCount, Is.EqualTo(1));
+            Assert.That(setup.ExecuteCount, Is.EqualTo(1));
+        }
+
+        private CountingSubtask AddSetupSubtask()
+        {
+            var setup = _host.AddComponent<CountingSubtask>();
+            typeof(GameObjectTask).GetField("_isSetup", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(setup, true);
+            SetPrivate(_task, "_subTasks", new GameObjectTask[] { _highlight, setup });
+            return setup;
+        }
+
         private static void SetPrivate(object target, string fieldName, object value)
         {
             var field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
@@ -144,7 +201,16 @@ namespace Framework.Sequencing.Tests
             public int ExecuteCount { get; private set; }
             public int CancelCount { get; private set; }
 
-            public override void Execute() => ExecuteCount++;
+            public bool CompleteWhenExecuted { get; set; }
+
+            public override void Execute()
+            {
+                ExecuteCount++;
+                if (CompleteWhenExecuted)
+                {
+                    MarkComplete();
+                }
+            }
 
             public override void Cancel() => CancelCount++;
         }

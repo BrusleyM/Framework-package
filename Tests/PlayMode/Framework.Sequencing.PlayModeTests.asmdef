@@ -7,6 +7,7 @@
         "Framework.Tasks",
         "Framework.Audio",
         "Framework.Outline",
+        "Framework.CheckPoints",
         "UnityEngine.TestRunner"
     ],
     "includePlatforms": [],

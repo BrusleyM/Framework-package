@@ -26,6 +26,16 @@ namespace Framework.Audio
             return audioSource.isPlaying && audioSource.clip == clip;
         }
 
+        public void Pause()
+        {
+            audioSource.Pause();
+        }
+
+        public void Resume()
+        {
+            audioSource.UnPause();
+        }
+
         public void Stop()
         {
             audioSource.Stop();

@@ -88,11 +88,20 @@ A condition implements `IStepCondition`: it is armed when the step starts and di
 - `ColliderContactCondition`: satisfied when a collider on an accepted layer touches this one, including contact that already exists. It accepts no layers until you choose them.
 - `InteractableCondition` (XRI 3.x): satisfied on hover or select, or on activate, of an interactable. It also completes at once if the interactable is already hovered or selected. Whether activate fires depends on your interaction profile, so select is the reliable choice for pokes and grabs.
 
-## Unguided sequences
+## Unguided mode
 
-A guided sequence walks the user through the tasks one at a time. For a free part, where the user may do the tasks in any order, add a `FreeGroupTask` and list the tasks in it. It starts them all without guidance (no audio, reminders or highlights) and completes when every one is done, so the next task of the sequence starts after it.
+A `SequentialTask` has a Mode dropdown, Guided or Unguided, and uses the same task list for both. Guided walks the user through the tasks one at a time. Unguided starts every task at once, so the user can do them in any order, with no audio, reminders or highlights, and the sequence completes when every task is done.
 
-A hint is only shown when asked for: call `RequestHint()` on the group (for example from a button or a UnityEvent), or set Hint After Idle Seconds to hint by itself after that long without progress. The hint is the task's own guidance: an `ActionTask` plays its instruction audio and runs its subtasks, so its highlights appear. Hints go to the first open task in the list, and finishing the task takes its hint down. The group also records the order in which the tasks were finished (`CompletionOrder`, `PositionOf`, `WasCompletedInListedOrder`), which helps when order matters: the group raises `OnCompletedInListedOrder` or `OnCompletedOutOfOrder` when the last task is done and can play one feedback clip for the whole group, so leave the tasks' own feedback clips empty. A custom task opts in by overriding `StartTaskUnguided`, `ShowHint` and `HideHint`.
+A task's check points never force an order: an `ActionTask` completes when all its check points are checked, in any order. What changes in unguided mode is how the tasks are scheduled and what guidance runs:
+
+- A subtask has an Is Setup tick. Setup subtasks (such as enabling the box a block snaps onto) run in both modes. Guidance subtasks (highlights) run in guided mode, and in unguided mode only when a hint is asked for.
+- A hint is only shown when asked for: call `RequestHint()` on the sequence (for example from a button or a UnityEvent), or set Hint After Idle Seconds to hint by itself after that long without progress. It shows the hint of the first open task and is taken down when that task finishes.
+- Tasks that only give guidance, such as `AudioTask`, are skipped in unguided mode.
+- The order the tasks were finished in is available as `CompletionOrder` and reported as it happens (`UnguidedTaskCompleted` with the task and its 1-based position, `UnguidedCompleted` with whether it matched the list order). That is useful when order matters. The tasks' own feedback audio is not played in unguided mode.
+- Changing the mode while playing (the dropdown or `SetMode`) restarts the sequence in the new mode on the next frame, keeping a pause. A sequence started with `Play(runner)` is cancelled, not rebuilt. `SkipCurrentTask` in unguided mode skips the whole unguided step (every open task, running their complete events), and skipping a task reverts what its subtasks changed, including the setup ones.
+- A hint goes to the first open task that has one (`Task.HasHint`; an `ActionTask` does).
+
+`Intro Audio` and `Complete Audio` on the `SequentialTask` play in both modes: the intro once when the sequence is run (`Run()` plays it; `Restart()` and a mode switch do not), the complete audio after the last task. The intro is its own short run before the tasks start, so the mode that applies is the one set when it ends. Changing the mode during the intro lets it finish by default, and cuts it and starts the tasks at once when Allow Cutting Intro is ticked. While they play, `CurrentStageIndex` is -1. Use them instead of an audio task at the start and a feedback clip on the last task. A custom task opts in by overriding `StartTaskUnguided`, `ShowHint`, `HideHint` and, for audio, `PauseTask` and `ResumeTask`.
 
 ## Build a sequence in the editor
 

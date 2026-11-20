@@ -25,6 +25,16 @@ namespace Framework.Sequencing
             Task.StartTask();
         }
 
+        protected override void OnPause()
+        {
+            Task.PauseTask();
+        }
+
+        protected override void OnResume()
+        {
+            Task.ResumeTask();
+        }
+
         protected override void OnAdvance(float deltaSeconds)
         {
             if (_taskCompletedButStillSettling && !Task.IsSettling)
