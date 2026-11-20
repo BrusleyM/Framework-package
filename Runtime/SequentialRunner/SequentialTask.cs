@@ -143,6 +143,7 @@ namespace Framework.Sequencing
                 _mode = mode;
                 _appliedMode = mode;
                 ModeChanged?.Invoke(mode);
+                LogSetupIssues();
                 return;
             }
 
@@ -176,7 +177,7 @@ namespace Framework.Sequencing
             {
                 if (_stages.Count == 0)
                 {
-                    return _taskList;
+                    return _taskList.AsReadOnly();
                 }
 
                 var tasks = new List<Task>();

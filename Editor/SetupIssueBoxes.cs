@@ -12,7 +12,8 @@ namespace Framework.Sequencing.Editor
         public static void Draw(Object target, System.Func<IReadOnlyList<SetupIssue>> check)
         {
             var id = target.GetInstanceID();
-            if (Event.current.type == EventType.Layout || !IssuesAtLastLayout.ContainsKey(id))
+            var isLayout = Event.current != null && Event.current.type == EventType.Layout;
+            if (isLayout || !IssuesAtLastLayout.ContainsKey(id))
             {
                 IssuesAtLastLayout[id] = check();
             }

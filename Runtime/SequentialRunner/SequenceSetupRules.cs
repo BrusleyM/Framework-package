@@ -95,6 +95,11 @@ namespace Framework.Sequencing
             {
                 foreach (var task in group)
                 {
+                    if (unguided && task is IGuidanceOnlyTask)
+                    {
+                        continue;
+                    }
+
                     if (unguided && task is IHintable)
                     {
                         hintable++;
@@ -117,7 +122,7 @@ namespace Framework.Sequencing
 
         private static void CheckTask(Task task, bool unguided, List<SetupIssue> issues)
         {
-            if (unguided && !(task is IGuidanceOnlyTask) && !(task is IUnguidedTask))
+            if (unguided && !(task is IUnguidedTask))
             {
                 issues.Add(new SetupIssue($"Task '{task.name}' does not implement IUnguidedTask, so unguided mode starts it as it is started when guided."));
             }

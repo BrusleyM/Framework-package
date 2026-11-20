@@ -151,6 +151,23 @@ namespace Framework.Sequencing.Tests
         }
 
         [Test]
+        public void A_guided_task_that_only_gives_guidance_is_left_out_of_the_unguided_checks()
+        {
+            var narration = _host.AddComponent<NarrationGuidedTask>();
+            PrivateMembers.SetField(narration, "_subTasks", new GameObjectTask[] { _host.AddComponent<EnableTask>() });
+            _sequence.AddTask(narration);
+            _sequence.AddTask(_host.AddComponent<UnguidedOnlyTask>());
+            _sequence.SetMode(GuidanceMode.Unguided);
+            PrivateMembers.SetField(_sequence, "_hintAfterIdleSeconds", 10f);
+
+            var messages = Messages(_sequence);
+
+            Assert.That(messages, Has.Some.Contain("no task can give a hint"));
+            Assert.That(messages, Has.None.Contain("turns an object on or off"));
+            Assert.That(messages, Has.None.Contain("A hint would show and play nothing"));
+        }
+
+        [Test]
         public void The_hint_rule_is_only_reported_for_unguided_mode_and_names_the_task_in_the_sequence()
         {
             var task = _host.AddComponent<CapableTask>();
@@ -341,6 +358,21 @@ namespace Framework.Sequencing.Tests
         }
 
         private sealed class CapableTask : GuidedTask
+        {
+            protected override void BeginCompletionTracking()
+            {
+            }
+
+            protected override void EndCompletionTracking()
+            {
+            }
+
+            protected override void ResetCompletionTracking()
+            {
+            }
+        }
+
+        private sealed class NarrationGuidedTask : GuidedTask, IGuidanceOnlyTask
         {
             protected override void BeginCompletionTracking()
             {

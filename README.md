@@ -129,8 +129,8 @@ Some ticks change behaviour silently, for example an `EnableTask` that is not ma
 |---|---|
 | Sequence | empty task list; an empty entry in the task list or the stages; a task listed twice; a stage without tasks; Intro or Complete Audio with clips but no Audio Source |
 | Sequence, unguided mode | a task that does not implement `IUnguidedTask`; only guidance tasks; an `EnableTask` subtask that is not marked Is Setup; Hint After Idle Seconds set but no task can hint |
-| Guided task | an empty subtask entry; Reminder Interval without Instruction Audio; a hint that would show and play nothing (no Instruction Audio and no subtask without Is Setup) |
-| Action task | no check points assigned; a highlight subtask marked Is Setup |
+| Guided task | an empty subtask entry; Reminder Interval without Instruction Audio; in unguided mode only, a hint that would show and play nothing (no Instruction Audio and no subtask without Is Setup) |
+| Action task | no check points assigned; in unguided mode only, a highlight subtask marked Is Setup |
 
 A custom `GuidedTask` adds its own checks by overriding `GetCompletionSetupIssues(bool forUnguidedMode)`. `GuidedTask.GetSetupIssues(forUnguidedMode)` only reports the hint and highlight problems when asked for unguided mode, because a hint only exists there. When stages are listed, the plain task list is ignored (as at run time) and the unguided checks run per stage.
 
