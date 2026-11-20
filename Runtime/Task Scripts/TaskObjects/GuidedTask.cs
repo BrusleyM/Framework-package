@@ -269,10 +269,9 @@ namespace Framework.Tasks
 
         private IEnumerator RemindUntilComplete()
         {
-            var interval = new WaitForSeconds(_reminderInterval);
             while (!IsComplete)
             {
-                yield return interval;
+                yield return Clock.WaitFor(_reminderInterval);
                 if (!IsComplete && !_isPaused)
                 {
                     PlayInstructionalAudio();
