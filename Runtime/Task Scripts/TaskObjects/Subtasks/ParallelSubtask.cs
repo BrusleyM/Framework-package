@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Framework.Sequencing;
 using UnityEngine;
 
 namespace Framework.Tasks
@@ -9,10 +10,11 @@ namespace Framework.Tasks
         private GameObjectTask[] _subtasks = new GameObjectTask[0];
 
         private readonly List<GameObjectTask> _runningSubtasks = new List<GameObjectTask>();
+        private readonly CompletionJoin<GameObjectTask> _join = new CompletionJoin<GameObjectTask>();
         private bool _isRunning;
         private bool _isExecuting;
         private bool _isCancelling;
-        private bool _completionPending;
+        private bool _isJoinWired;
 
         public override void Execute()
         {
@@ -22,6 +24,7 @@ namespace Framework.Tasks
                 return;
             }
 
+            WireTheJoin();
             _isExecuting = true;
             try
             {
@@ -30,17 +33,17 @@ namespace Framework.Tasks
             finally
             {
                 _isExecuting = false;
-                RaiseDeferredCompletion();
+                _join.Release();
             }
         }
 
         private void ExecuteGroup()
         {
             _isRunning = true;
-            _completionPending = false;
             CollectDistinctSubtasksInto(_runningSubtasks);
+            _join.Begin(_runningSubtasks);
             PrepareAndListenToEverySubtask();
-            if (CompleteWhenEverySubtaskIsComplete())
+            if (_join.HasEveryMemberFinished)
             {
                 return;
             }
@@ -51,7 +54,7 @@ namespace Framework.Tasks
             }
             catch
             {
-                if (_isRunning)
+                if (_isRunning && !_join.HasEveryMemberFinished)
                 {
                     Cancel();
                 }
@@ -78,19 +81,28 @@ namespace Framework.Tasks
             }
         }
 
-        private void RaiseDeferredCompletion()
+        private void WireTheJoin()
         {
-            if (_completionPending)
+            if (_isJoinWired)
             {
-                _completionPending = false;
-                MarkComplete();
+                return;
             }
+
+            _isJoinWired = true;
+            _join.AllFinished += OnEverySubtaskFinished;
+        }
+
+        private void OnEverySubtaskFinished()
+        {
+            _isRunning = false;
+            StopListeningToEverySubtask();
+            MarkComplete();
         }
 
         private void CancelGroup()
         {
             _isRunning = false;
-            _completionPending = false;
+            _join.Stop();
             StopListeningToEverySubtask();
             var everySubtask = new List<GameObjectTask>();
             CollectDistinctSubtasksInto(everySubtask);
@@ -156,6 +168,10 @@ namespace Framework.Tasks
                 subtask.Prepare();
                 subtask.Completed -= OnSubtaskCompleted;
                 subtask.Completed += OnSubtaskCompleted;
+                if (subtask.IsComplete)
+                {
+                    _join.Finish(subtask);
+                }
             }
         }
 
@@ -180,35 +196,21 @@ namespace Framework.Tasks
 
         private void OnSubtaskCompleted()
         {
-            CompleteWhenEverySubtaskIsComplete();
-        }
-
-        private bool CompleteWhenEverySubtaskIsComplete()
-        {
-            if (!_isRunning)
+            _join.Hold();
+            try
             {
-                return false;
-            }
-
-            foreach (var subtask in _runningSubtasks)
-            {
-                if (!subtask.IsComplete)
+                foreach (var subtask in _runningSubtasks.ToArray())
                 {
-                    return false;
+                    if (subtask.IsComplete)
+                    {
+                        _join.Finish(subtask);
+                    }
                 }
             }
-
-            _isRunning = false;
-            StopListeningToEverySubtask();
-            if (_isExecuting)
+            finally
             {
-                _completionPending = true;
+                _join.Release();
             }
-            else
-            {
-                MarkComplete();
-            }
-            return true;
         }
     }
 }

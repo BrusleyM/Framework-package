@@ -81,6 +81,16 @@ On the outer runner, `SkipCurrentStep` skips the whole running stage (its curren
 
 In a scene, add a `TaskStage` component per stage, list its tasks, and list the stages on `SequentialTask`. When any stage is listed they replace the plain task list. `SkipCurrentTask` and `GoBack` move within the current stage, and `SkipCurrentStage`, `GoBackStage` and `RestartCurrentStage` move between stages. `CurrentStageName` and `CurrentStageIndex` say where the player is.
 
+## Running things together
+
+"Run these together" is said in three places, and they all join through one class, `CompletionJoin` (it finishes once every member has finished, and can be held while the members are still being started):
+
+- In a sequence, `ParallelStep` (the builder's `Together`) runs steps together and finishes when all did.
+- For tasks the player may do in any order, `UnguidedStep` starts every task and adds the hint, the completion order and the settling.
+- Inside a guided task, `ParallelSubtask` runs subtasks together.
+
+`StageStep` is not one of them: it nests a sequence that runs in order. Write a new "wait for all" with `CompletionJoin` instead of tracking finished flags yourself.
+
 ## Steps that wait for the player
 
 A condition implements `IStepCondition`: it is armed when the step starts and disarmed when the step ends, whatever the reason. A condition may be satisfied synchronously while arming.
