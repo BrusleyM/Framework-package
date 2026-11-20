@@ -1,4 +1,6 @@
 using System.Collections;
+using System.Collections.Generic;
+using System.Reflection;
 using Framework.Tasks;
 using NUnit.Framework;
 using UnityEngine;
@@ -138,6 +140,128 @@ namespace Framework.Sequencing.Tests
             _sequence.enabled = false;
 
             Assert.AreEqual(SequenceState.Cancelled, _sequence.Runner.State);
+        }
+
+        [UnityTest]
+        public IEnumerator The_guided_mode_runs_the_guided_list_and_the_unguided_mode_runs_the_unguided_list()
+        {
+            var guided = AddTask("guided");
+            var unguided = AddUnguidedTask("unguided");
+
+            _sequence.Run();
+            yield return null;
+            var guidedRan = guided.StartCount;
+            _sequence.SetMode(GuidanceMode.Unguided);
+            _sequence.Run();
+            yield return null;
+
+            Assert.AreEqual(1, guidedRan);
+            Assert.AreEqual(0, unguided.StartCount - 1);
+            Assert.AreSame(unguided, _sequence.CurrentTask);
+        }
+
+        [UnityTest]
+        public IEnumerator Switching_mode_pauses_the_running_mode_and_coming_back_resumes_it_where_it_was()
+        {
+            var first = AddTask("first");
+            var second = AddTask("second");
+            AddUnguidedTask("free");
+            _sequence.Run();
+            yield return null;
+            first.Finish();
+            yield return null;
+
+            _sequence.SetMode(GuidanceMode.Unguided);
+            var guidedRunner = _runnerOfMode(GuidanceMode.Guided);
+            var pausedWhileAway = guidedRunner.State;
+            _sequence.RunOrResume();
+            yield return null;
+            _sequence.SetMode(GuidanceMode.Guided);
+            _sequence.RunOrResume();
+            yield return null;
+
+            Assert.AreEqual(SequenceState.Paused, pausedWhileAway);
+            Assert.AreEqual(SequenceState.Running, _sequence.Runner.State);
+            Assert.AreSame(second, _sequence.CurrentTask);
+        }
+
+        [UnityTest]
+        public IEnumerator Each_mode_keeps_its_own_progress_when_the_other_one_runs()
+        {
+            AddTask("guided one");
+            var free = AddUnguidedTask("free one");
+            _sequence.SetMode(GuidanceMode.Unguided);
+            _sequence.Run();
+            yield return null;
+            free.Finish();
+            yield return null;
+
+            _sequence.SetMode(GuidanceMode.Guided);
+
+            Assert.IsFalse(_sequence.HasRun);
+            _sequence.SetMode(GuidanceMode.Unguided);
+            Assert.AreEqual(SequenceState.Completed, _sequence.Runner.State);
+        }
+
+        [UnityTest]
+        public IEnumerator Changing_the_mode_raises_the_mode_changed_event_once_with_the_new_mode()
+        {
+            var reported = new List<GuidanceMode>();
+            _sequence.ModeChanged += reported.Add;
+
+            _sequence.SetMode(GuidanceMode.Unguided);
+            _sequence.SetMode(GuidanceMode.Unguided);
+            yield return null;
+
+            CollectionAssert.AreEqual(new List<GuidanceMode> { GuidanceMode.Unguided }, reported);
+        }
+
+        [UnityTest]
+        public IEnumerator Run_or_resume_starts_a_mode_that_has_not_run_and_resumes_one_that_is_paused()
+        {
+            AddTask("only");
+            _sequence.RunOrResume();
+            yield return null;
+            var started = _sequence.HasRun;
+
+            _sequence.Pause();
+            _sequence.RunOrResume();
+
+            Assert.IsTrue(started);
+            Assert.AreEqual(SequenceState.Running, _sequence.Runner.State);
+        }
+
+        [UnityTest]
+        public IEnumerator Disabling_the_sequence_cancels_the_runs_of_both_modes()
+        {
+            AddTask("guided");
+            AddUnguidedTask("free");
+            _sequence.Run();
+            yield return null;
+            var guidedRunner = _sequence.Runner;
+            _sequence.SetMode(GuidanceMode.Unguided);
+            _sequence.Run();
+            yield return null;
+            var unguidedRunner = _sequence.Runner;
+
+            _sequence.enabled = false;
+
+            Assert.AreEqual(SequenceState.Cancelled, guidedRunner.State);
+            Assert.AreEqual(SequenceState.Cancelled, unguidedRunner.State);
+        }
+
+        private SequenceRunner _runnerOfMode(GuidanceMode mode)
+        {
+            var runners = (SequenceRunner[])typeof(SequentialTask).GetField("_runnersByMode", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(_sequence);
+            return runners[(int)mode];
+        }
+
+        private ProbeTask AddUnguidedTask(string taskName)
+        {
+            var task = _host.AddComponent<ProbeTask>();
+            task.Label = taskName;
+            _sequence.UnguidedTaskList.Add(task);
+            return task;
         }
 
         private ProbeTask AddTask(string taskName)

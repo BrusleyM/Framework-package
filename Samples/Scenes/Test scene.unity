@@ -332,7 +332,7 @@ GameObject:
   - component: {fileID: 235408597}
   - component: {fileID: 235408598}
   m_Layer: 0
-  m_Name: Guided tasks
+  m_Name: Tasks
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -355,6 +355,7 @@ Transform:
   - {fileID: 2040620478}
   - {fileID: 97669619}
   - {fileID: 1265898029}
+  - {fileID: 1553776717}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &235408598
@@ -369,6 +370,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b333a615fd6f8aa46a969df5b23b8d04, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _mode: 0
   _audioSource: {fileID: 1739773246}
   _taskList:
   - {fileID: 902546333}
@@ -376,6 +378,8 @@ MonoBehaviour:
   - {fileID: 97669620}
   - {fileID: 1265898031}
   _stages: []
+  _unguidedTaskList:
+  - {fileID: 1172819760}
 --- !u!1 &261821943
 GameObject:
   m_ObjectHideFlags: 0
@@ -3337,9 +3341,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 59f824ed174a5d546907826e26710cca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _currentMode: 0
-  _guidedSequence: {fileID: 235408598}
-  _unguidedSequence: {fileID: 1962085837}
+  _sequence: {fileID: 235408598}
   _instructor: {fileID: 813433828}
   _instructorVoice: {fileID: 1739773246}
   _guidedZoneCentre: {fileID: 2097988659}
@@ -4413,7 +4415,7 @@ Transform:
   - {fileID: 1476583231}
   - {fileID: 530842519}
   - {fileID: 1172819762}
-  m_Father: {fileID: 1962085838}
+  m_Father: {fileID: 235408597}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1561649001
 GameObject:
@@ -5431,55 +5433,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!1 &1962085836
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1962085838}
-  - component: {fileID: 1962085837}
-  m_Layer: 0
-  m_Name: Unguided tasks
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1962085837
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1962085836}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b333a615fd6f8aa46a969df5b23b8d04, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _audioSource: {fileID: 1739773246}
-  _taskList:
-  - {fileID: 1172819760}
-  _stages: []
---- !u!4 &1962085838
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1962085836}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1553776717}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1973752850
 GameObject:
   m_ObjectHideFlags: 0
@@ -6190,4 +6143,3 @@ SceneRoots:
   - {fileID: 2106389230}
   - {fileID: 161997955}
   - {fileID: 813433827}
-  - {fileID: 1962085838}

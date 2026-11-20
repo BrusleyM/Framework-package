@@ -9,15 +9,9 @@ namespace FrameworkTest
     {
         private static GameManager _instance;
         public static GameManager Instance=> _instance;
-        public enum GameMode { Guided, LetMeTry }
-        [SerializeField]
-        private GameMode _currentMode = GameMode.Guided;
-        public GameMode CurrentMode => _currentMode;
 
-        [SerializeField, FormerlySerializedAs("_currentSequentialTask")]
-        private SequentialTask _guidedSequence;
-        [SerializeField]
-        private SequentialTask _unguidedSequence;
+        [SerializeField, FormerlySerializedAs("_guidedSequence"), FormerlySerializedAs("_currentSequentialTask")]
+        private SequentialTask _sequence;
         [SerializeField]
         private MoveTo _instructor;
         [SerializeField]
@@ -28,9 +22,9 @@ namespace FrameworkTest
         private Transform _unguidedZoneCentre;
 
         private readonly bool[] _playerIsInside = new bool[2];
-        private GameMode _activeMode;
 
-        public SequentialTask CurrentSequentialTask => SequenceFor(_currentMode);
+        public GuidanceMode CurrentMode => _sequence.Mode;
+        public SequentialTask CurrentSequentialTask => _sequence;
 
         private void Awake()
         {
@@ -42,8 +36,6 @@ namespace FrameworkTest
             {
                 _instance = this;
             }
-
-            _activeMode = _currentMode;
         }
 
         private void Start()
@@ -54,11 +46,19 @@ namespace FrameworkTest
             }
         }
 
-        private void OnValidate()
+        private void OnEnable()
         {
-            if (Application.isPlaying && _instance == this && _currentMode != _activeMode)
+            if (_sequence != null)
             {
-                ApplyModeChange();
+                _sequence.ModeChanged += OnModeChanged;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (_sequence != null)
+            {
+                _sequence.ModeChanged -= OnModeChanged;
             }
         }
 
@@ -72,108 +72,80 @@ namespace FrameworkTest
         }
 #endif
 
-        public void SetGameMode(GameMode mode)
+        public void SetGameMode(GuidanceMode mode)
         {
-            _currentMode = mode;
-            if (_currentMode != _activeMode)
-            {
-                ApplyModeChange();
-            }
+            _sequence.SetMode(mode);
         }
 
         public void StartSequence()
         {
-            StartOrResume(SequenceFor(_currentMode));
+            _sequence.RunOrResume();
         }
 
-        public void PlayerEnteredSection(GameMode section)
+        public void PlayerEnteredSection(GuidanceMode section)
         {
             _playerIsInside[(int)section] = true;
-            if (section == _activeMode)
+            if (section == _sequence.Mode)
             {
                 Activate(section);
             }
         }
 
-        public void PlayerLeftSection(GameMode section)
+        public void PlayerLeftSection(GuidanceMode section)
         {
             _playerIsInside[(int)section] = false;
-            if (section == _activeMode)
+            if (section == _sequence.Mode)
             {
-                Deactivate(section);
+                Deactivate();
             }
         }
 
         public void HintButtonPressed()
         {
-            var sequence = SequenceFor(_activeMode);
-            if (sequence != null && sequence.CurrentTask is FreeGroupTask freeGroup)
+            if (_sequence.CurrentTask is FreeGroupTask freeGroup)
             {
                 freeGroup.RequestHint();
             }
         }
 
-        private void ApplyModeChange()
-        {
-            Deactivate(_activeMode);
-            if (_instructorVoice != null)
-            {
-                _instructorVoice.Stop();
-                _instructorVoice.clip = null;
-            }
-
-            _activeMode = _currentMode;
-            if (_playerIsInside[(int)_activeMode])
-            {
-                Activate(_activeMode);
-            }
-        }
-
-        private void Activate(GameMode mode)
-        {
-            if (_instructor != null)
-            {
-                _instructor.MoveZoneTo(ZoneCentreFor(mode));
-                _instructor.SetFollowing(true);
-            }
-
-            StartOrResume(SequenceFor(mode));
-        }
-
-        private void Deactivate(GameMode mode)
+        private void OnModeChanged(GuidanceMode newMode)
         {
             if (_instructor != null)
             {
                 _instructor.SetFollowing(false);
             }
 
-            SequenceFor(mode)?.Pause();
-        }
+            if (_instructorVoice != null)
+            {
+                _instructorVoice.Stop();
+                _instructorVoice.clip = null;
+            }
 
-        private static void StartOrResume(SequentialTask sequence)
-        {
-            if (sequence == null)
+            if (_playerIsInside[(int)newMode])
             {
-                Debug.LogError("No SequentialTask assigned to GameManager for this mode.");
-            }
-            else if (!sequence.HasRun)
-            {
-                sequence.Run();
-            }
-            else
-            {
-                sequence.Resume();
+                Activate(newMode);
             }
         }
 
-        private SequentialTask SequenceFor(GameMode mode)
+        private void Activate(GuidanceMode mode)
         {
-            return mode == GameMode.Guided ? _guidedSequence : _unguidedSequence;
+            if (_instructor != null)
+            {
+                _instructor.MoveZoneTo(mode == GuidanceMode.Guided ? _guidedZoneCentre : _unguidedZoneCentre);
+                _instructor.SetFollowing(true);
+            }
+
+            _sequence.RunOrResume();
         }
 
-        private Transform ZoneCentreFor(GameMode mode)
+        private void Deactivate()
         {
-            return mode == GameMode.Guided ? _guidedZoneCentre : _unguidedZoneCentre;
+            if (_instructor != null)
+            {
+                _instructor.SetFollowing(false);
+            }
+
+            _sequence.Pause();
         }
     }
 }

@@ -9,25 +9,40 @@ namespace Framework.Sequencing
     public class SequentialTask : MonoBehaviour
     {
         [SerializeField]
+        private GuidanceMode _mode = GuidanceMode.Guided;
+        [SerializeField]
         private AudioSource _audioSource;
         [SerializeField]
         private List<Task> _taskList = new List<Task>();
         [SerializeField]
         private List<TaskStage> _stages = new List<TaskStage>();
+        [SerializeField]
+        private List<Task> _unguidedTaskList = new List<Task>();
 
-        private SequenceRunner _runner;
+        private readonly SequenceRunner[] _runnersByMode = new SequenceRunner[2];
+        private GuidanceMode _appliedMode;
+
         private Coroutine _clock;
         private AudioPlayer _audioPlayer;
 
+        public GuidanceMode Mode => _mode;
         public List<Task> TaskList => _taskList;
-        public SequenceRunner Runner => _runner;
+        public List<Task> UnguidedTaskList => _unguidedTaskList;
+        public event System.Action<GuidanceMode> ModeChanged;
+        public SequenceRunner Runner => ActiveRunner;
         public Task CurrentTask => (ActiveTaskRunner?.CurrentStep as TaskStep)?.Task;
-        public string CurrentStageName => (_runner?.CurrentStep as StageStep)?.Name;
-        public int CurrentStageIndex => _runner != null ? _runner.CurrentIndex : -1;
-        public bool HasRun => _runner != null && _runner.State != SequenceState.Idle;
-        public bool IsRunning => _runner != null && _runner.IsInProgress;
+        public string CurrentStageName => (ActiveRunner?.CurrentStep as StageStep)?.Name;
+        public int CurrentStageIndex => ActiveRunner != null ? ActiveRunner.CurrentIndex : -1;
+        public bool HasRun => ActiveRunner != null && ActiveRunner.State != SequenceState.Idle;
+        public bool IsRunning => ActiveRunner != null && ActiveRunner.IsInProgress;
 
-        private SequenceRunner ActiveTaskRunner => (_runner?.CurrentStep as StageStep)?.Stage ?? _runner;
+        private SequenceRunner ActiveRunner
+        {
+            get => _runnersByMode[(int)_mode];
+            set => _runnersByMode[(int)_mode] = value;
+        }
+
+        private SequenceRunner ActiveTaskRunner => (ActiveRunner?.CurrentStep as StageStep)?.Stage ?? ActiveRunner;
 
         public void AddTask(Task task)
         {
@@ -49,6 +64,37 @@ namespace Framework.Sequencing
             Play(BuildRunnerFromTaskList());
         }
 
+        public void RunOrResume()
+        {
+            if (!HasRun)
+            {
+                Run();
+            }
+            else
+            {
+                Resume();
+            }
+        }
+
+        public void SetMode(GuidanceMode mode)
+        {
+            if (mode == _appliedMode)
+            {
+                _mode = mode;
+                return;
+            }
+
+            ActiveRunner?.Pause();
+            _mode = mode;
+            _appliedMode = mode;
+            if (isActiveAndEnabled && ActiveRunner != null && ActiveRunner.IsInProgress)
+            {
+                EnsureClockIsRunning();
+            }
+
+            ModeChanged?.Invoke(mode);
+        }
+
         public void Play(SequenceRunner runner)
         {
             if (!isActiveAndEnabled)
@@ -58,36 +104,36 @@ namespace Framework.Sequencing
 
             Cancel();
 
-            _runner = runner;
-            _runner.Faulted += LogFault;
+            ActiveRunner = runner;
+            ActiveRunner.Faulted += LogFault;
             EnsureClockIsRunning();
-            _runner.Start();
+            ActiveRunner.Start();
         }
 
-        public void Pause() => _runner?.Pause();
+        public void Pause() => ActiveRunner?.Pause();
 
-        public void Resume() => _runner?.Resume();
+        public void Resume() => ActiveRunner?.Resume();
 
         public void SkipCurrentTask() => ActiveTaskRunner?.SkipCurrentStep();
 
         public void GoBack() => ActiveTaskRunner?.GoBack();
 
-        public void SkipCurrentStage() => _runner?.SkipCurrentStep();
+        public void SkipCurrentStage() => ActiveRunner?.SkipCurrentStep();
 
-        public void GoBackStage() => _runner?.GoBack();
+        public void GoBackStage() => ActiveRunner?.GoBack();
 
-        public void RestartCurrentStage() => _runner?.RestartCurrentStep();
+        public void RestartCurrentStage() => ActiveRunner?.RestartCurrentStep();
 
         public void Restart()
         {
-            if (_runner == null)
+            if (ActiveRunner == null)
             {
                 return;
             }
 
-            _runner.Faulted -= LogFault;
-            _runner.Faulted += LogFault;
-            _runner.Restart();
+            ActiveRunner.Faulted -= LogFault;
+            ActiveRunner.Faulted += LogFault;
+            ActiveRunner.Restart();
             EnsureClockIsRunning();
         }
 
@@ -95,25 +141,53 @@ namespace Framework.Sequencing
         {
             StopClock();
 
-            if (_runner == null)
+            if (ActiveRunner == null)
             {
                 return;
             }
 
-            _runner.Faulted -= LogFault;
-            _runner.Cancel();
+            ActiveRunner.Faulted -= LogFault;
+            ActiveRunner.Cancel();
         }
 
         public void StopExecution() => Cancel();
 
+        private void Awake()
+        {
+            _appliedMode = _mode;
+        }
+
+        private void OnValidate()
+        {
+            if (Application.isPlaying && _mode != _appliedMode)
+            {
+                var requested = _mode;
+                _mode = _appliedMode;
+                SetMode(requested);
+            }
+        }
+
         private void OnDisable()
         {
-            Cancel();
+            StopClock();
+            foreach (var runner in _runnersByMode)
+            {
+                if (runner != null)
+                {
+                    runner.Faulted -= LogFault;
+                    runner.Cancel();
+                }
+            }
         }
 
         private SequenceRunner BuildRunnerFromTaskList()
         {
             var audioPlayer = ObtainAudioPlayer();
+
+            if (_mode == GuidanceMode.Unguided)
+            {
+                return new SequenceRunner(name, StepsFor(_unguidedTaskList, audioPlayer));
+            }
 
             if (_stages.Count == 0)
             {
@@ -181,11 +255,11 @@ namespace Framework.Sequencing
 
         private IEnumerator TickWhileInProgress()
         {
-            while (_runner != null && (_runner.State == SequenceState.Idle || _runner.IsInProgress))
+            while (ActiveRunner != null && (ActiveRunner.State == SequenceState.Idle || ActiveRunner.IsInProgress))
             {
                 try
                 {
-                    _runner.Advance(Time.deltaTime);
+                    ActiveRunner.Advance(Time.deltaTime);
                 }
                 catch (System.Exception exception)
                 {

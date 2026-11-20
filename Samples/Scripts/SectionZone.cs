@@ -1,3 +1,4 @@
+using Framework.Sequencing;
 using UnityEngine;
 
 namespace FrameworkTest
@@ -6,7 +7,7 @@ namespace FrameworkTest
     public class SectionZone : MonoBehaviour
     {
         [SerializeField]
-        private GameManager.GameMode _section;
+        private GuidanceMode _section;
 
         private void OnTriggerEnter(Collider other)
         {
