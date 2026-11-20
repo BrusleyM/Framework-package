@@ -1,11 +1,10 @@
 using System.Collections;
 using Framework.Audio;
-using Framework.CheckPoints;
 using UnityEngine;
 
 namespace Framework.Tasks
 {
-    public class ActionTask : Task
+    public abstract class GuidedTask : Task
     {
         [SerializeField]
         private MyClip _instructionalAudio;
@@ -15,8 +14,6 @@ namespace Framework.Tasks
         private float _reminderInterval;
         [SerializeField]
         private GameObjectTask[] _subTasks;
-        [SerializeField]
-        private CheckPointsParent _checkPoints;
 
         private Coroutine _reminderRoutine;
         private int _subTaskIndex;
@@ -27,7 +24,6 @@ namespace Framework.Tasks
         private bool _runsGuidanceOnly;
         private bool _isPaused;
 
-        public CheckPointsParent CheckPointsParent => _checkPoints;
         public GameObjectTask CurrentSubtask { get; private set; }
         public override bool IsSettling => IsFeedbackAudioPlaying();
         public override bool HasHint => true;
@@ -50,9 +46,7 @@ namespace Framework.Tasks
             StopEverythingInProgress();
             _isShowingHint = false;
             _isUnguided = true;
-            LinkCheckPointsToThisTask();
-            _checkPoints.ResetAllPoints();
-            ListenForAllCheckPointsChecked();
+            BeginCompletionTracking();
             RunSetupSubTasks();
         }
 
@@ -87,9 +81,7 @@ namespace Framework.Tasks
             _isPaused = false;
             _isShowingHint = false;
             StopEverythingInProgress();
-            LinkCheckPointsToThisTask();
-            _checkPoints.ResetAllPoints();
-            ListenForAllCheckPointsChecked();
+            BeginCompletionTracking();
             PlayInstructionalAudio();
             StartReminder();
             StartSubTasks();
@@ -134,7 +126,7 @@ namespace Framework.Tasks
             _isShowingHint = false;
             _audioPlayer?.Stop();
             TearDownSubTasks();
-            _checkPoints.ResetAllPoints();
+            ResetCompletionTracking();
             IsDoing = false;
         }
 
@@ -182,31 +174,16 @@ namespace Framework.Tasks
         private void StopEverythingInProgress()
         {
             StopReminder();
-            StopListeningForAllCheckPointsChecked();
+            EndCompletionTracking();
             DetachFromCurrentSubTask();
             _advanceRequested = false;
         }
 
-        private void LinkCheckPointsToThisTask()
-        {
-            foreach (var point in _checkPoints.CheckPoints)
-            {
-                if (point != null)
-                {
-                    point.Parent = _checkPoints;
-                }
-            }
-        }
+        protected abstract void BeginCompletionTracking();
 
-        private void ListenForAllCheckPointsChecked()
-        {
-            _checkPoints.OnAllChecked.AddListener(TaskComplete);
-        }
+        protected abstract void EndCompletionTracking();
 
-        private void StopListeningForAllCheckPointsChecked()
-        {
-            _checkPoints.OnAllChecked.RemoveListener(TaskComplete);
-        }
+        protected abstract void ResetCompletionTracking();
 
         private void PlayInstructionalAudio()
         {

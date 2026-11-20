@@ -1,4 +1,3 @@
-using System.Reflection;
 using Framework.CheckPoints;
 using Framework.Tasks;
 using NUnit.Framework;
@@ -118,11 +117,27 @@ namespace Framework.Sequencing.Tests
             _task.StartTaskUnguided();
             _task.ShowHint();
 
-            typeof(ActionTask).GetMethod("OnDisable", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(_task, null);
+            PrivateMembers.Invoke(_task, "OnDisable");
             _task.ShowHint();
 
             Assert.That(_highlight.CancelCount, Is.EqualTo(1));
             Assert.That(_highlight.ExecuteCount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Disabling_an_action_task_that_never_started_and_has_no_check_points_does_not_throw()
+        {
+            var bare = _host.AddComponent<ActionTask>();
+
+            Assert.DoesNotThrow(() => PrivateMembers.Invoke(bare, "OnDisable"));
+        }
+
+        [Test]
+        public void Starting_an_action_task_without_check_points_says_so()
+        {
+            var bare = _host.AddComponent<ActionTask>();
+
+            Assert.Throws<System.InvalidOperationException>(() => bare.StartTask());
         }
 
         [Test]
@@ -185,15 +200,14 @@ namespace Framework.Sequencing.Tests
         private CountingSubtask AddSetupSubtask()
         {
             var setup = _host.AddComponent<CountingSubtask>();
-            typeof(GameObjectTask).GetField("_isSetup", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(setup, true);
+            PrivateMembers.SetField(setup, "_isSetup", true);
             SetPrivate(_task, "_subTasks", new GameObjectTask[] { _highlight, setup });
             return setup;
         }
 
         private static void SetPrivate(object target, string fieldName, object value)
         {
-            var field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
-            field.SetValue(target, value);
+            PrivateMembers.SetField(target, fieldName, value);
         }
 
         private sealed class CountingSubtask : GameObjectTask

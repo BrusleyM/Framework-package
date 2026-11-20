@@ -1,0 +1,18 @@
+{
+    "name": "Framework.Tasks.Interaction",
+    "rootNamespace": "Framework.Tasks",
+    "references": [
+        "Framework.Tasks",
+        "Framework.CheckPoints",
+        "Framework.Outline"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
