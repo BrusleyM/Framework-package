@@ -127,8 +127,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .host/Library
-          key: Library-${{ matrix.unity }}-${{ matrix.interactionToolkit }}-${{ hashFiles('.host/Packages/manifest.json') }}
-          restore-keys: Library-${{ matrix.unity }}-${{ matrix.interactionToolkit }}-
+          key: Library-${{ matrix.unity }}-${{ matrix.interactionToolkit }}-${{ hashFiles('.host/Packages/manifest.json', 'package.json', 'Runtime/**', 'Editor/**', 'Tests/**', 'Samples~/**', '.core/package.json', '.core/Runtime/**', '.core/Editor/**') }}
       - name: Run EditMode and PlayMode tests
         id: tests
         continue-on-error: true
