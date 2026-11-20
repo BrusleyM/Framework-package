@@ -34,7 +34,7 @@ namespace Framework.Sequencing.Tests
             var finished = 0;
 
             _player.Play(Clip(0.2f), _owner, () => finished++);
-            yield return new WaitForSeconds(0.7f);
+            yield return Until(() => finished > 0);
 
             Assert.That(finished, Is.EqualTo(1));
             Assert.That(_player.IsPlaying, Is.False);
@@ -114,21 +114,47 @@ namespace Framework.Sequencing.Tests
         }
 
         [UnityTest]
-        public IEnumerator A_second_player_on_the_same_source_takes_over_and_the_first_one_goes_quiet()
+        public IEnumerator A_second_player_on_the_same_source_takes_over_and_the_first_forwards_to_it()
         {
-            var firstFinished = 0;
-            _player.Play(Clip(1f), _owner, () => firstFinished++);
+            var droppedFinished = 0;
+            _player.Play(Clip(1f), _owner, () => droppedFinished++);
             yield return null;
 
             var second = new AudioPlayer(_source);
-            var secondFinished = 0;
-            second.Play(Clip(0.2f), _other, () => secondFinished++);
-            _player.Play(Clip(0.2f), _owner, () => firstFinished++);
-            yield return new WaitForSeconds(0.7f);
+            var forwardedFinished = 0;
+            _player.Play(Clip(0.2f), _other, () => forwardedFinished++);
+            var playingThroughSecond = second.IsPlayingFor(_other);
+            yield return Until(() => forwardedFinished > 0);
 
-            Assert.That(firstFinished, Is.EqualTo(0));
-            Assert.That(secondFinished, Is.EqualTo(1));
+            Assert.That(droppedFinished, Is.EqualTo(0));
+            Assert.That(playingThroughSecond, Is.True);
+            Assert.That(forwardedFinished, Is.EqualTo(1));
+            Assert.That(second.IsPlaying, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator Deactivating_the_audio_host_mid_clip_finishes_the_clip_so_a_chain_does_not_hang()
+        {
+            var finished = 0;
+            _player.Play(Clip(2f), _owner, () => finished++);
+            yield return null;
+
+            _host.SetActive(false);
+
+            Assert.That(finished, Is.EqualTo(1));
             Assert.That(_player.IsPlaying, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator A_null_owner_is_refused_without_cutting_the_current_audio()
+        {
+            _player.Play(Clip(1f), _owner);
+            yield return null;
+
+            Assert.Throws<System.ArgumentNullException>(() => _player.Play(Clip(0.2f), null));
+
+            Assert.That(_source.isPlaying, Is.True);
+            Assert.That(_player.IsPlayingFor(_owner), Is.True);
         }
 
         [UnityTest]
@@ -141,6 +167,15 @@ namespace Framework.Sequencing.Tests
 
             Assert.DoesNotThrow(() => _player.Stop(_owner));
             Assert.DoesNotThrow(() => _player.StopAll());
+        }
+
+        private static IEnumerator Until(System.Func<bool> condition)
+        {
+            var deadline = Time.realtimeSinceStartup + 3f;
+            while (!condition() && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+            }
         }
 
         private static AudioClip Clip(float seconds)

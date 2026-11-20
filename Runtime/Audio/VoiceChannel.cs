@@ -84,6 +84,18 @@ namespace Framework.Audio
             finished?.Invoke();
         }
 
+        public void FinishEvenIfPaused()
+        {
+            if (_owner == null)
+            {
+                return;
+            }
+
+            var finished = _onFinished;
+            Clear();
+            finished?.Invoke();
+        }
+
         private void Clear()
         {
             _owner = null;

@@ -26,29 +26,36 @@ namespace Framework.Audio
             _pump.Bind(this);
         }
 
-        public bool IsPlaying => _pump != null && _channel.IsPlaying;
+        public bool IsPlaying => Active != null && Active._channel.IsPlaying;
 
         public bool IsPlayingFor(object owner)
         {
-            return _pump != null && _channel.IsPlayingFor(owner);
+            return Active != null && Active._channel.IsPlayingFor(owner);
         }
 
         public void Play(AudioClip clip, object owner, Action onFinished = null)
         {
-            if (_pump == null)
+            var player = Active;
+            if (player == null)
             {
                 return;
             }
 
+            if (player != this)
+            {
+                player.Play(clip, owner, onFinished);
+                return;
+            }
+
+            _channel.Begin(owner, onFinished);
             if (_audioSource != null)
             {
                 _audioSource.Stop();
             }
 
-            _channel.Begin(owner, onFinished);
-            if (_audioSource == null || !_audioSource.isActiveAndEnabled)
+            if (!_audioSource.isActiveAndEnabled)
             {
-                Debug.LogWarning("The audio source is missing or inactive, so the clip is skipped.", _audioSource);
+                Debug.LogWarning("The audio source is inactive, so the clip is skipped.", _audioSource);
                 _channel.Finish();
                 return;
             }
@@ -64,37 +71,59 @@ namespace Framework.Audio
 
         public void Pause(object owner)
         {
-            if (_pump != null && _channel.Pause(owner) && _audioSource != null)
+            var player = Active;
+            if (player != null && player._channel.Pause(owner))
             {
-                _audioSource.Pause();
+                player._audioSource.Pause();
             }
         }
 
         public void Resume(object owner)
         {
-            if (_pump != null && _channel.Resume(owner) && _audioSource != null)
+            var player = Active;
+            if (player != null && player._channel.Resume(owner))
             {
-                _audioSource.UnPause();
+                player._audioSource.UnPause();
             }
         }
 
         public void Stop(object owner)
         {
-            if (_pump != null && _channel.Stop(owner))
+            var player = Active;
+            if (player != null && player._channel.Stop(owner))
             {
-                StopSource();
+                player.StopSource();
             }
         }
 
         public void StopAll()
         {
-            if (_pump != null && _channel.StopAll())
+            var player = Active;
+            if (player != null && player._channel.StopAll())
             {
-                StopSource();
+                player.StopSource();
             }
         }
 
         private static bool IsAppUnfocused => !Application.isBatchMode && !Application.isFocused;
+
+        private AudioPlayer Active
+        {
+            get
+            {
+                if (_audioSource == null)
+                {
+                    return null;
+                }
+
+                if (_pump != null)
+                {
+                    return this;
+                }
+
+                return PlayerOfSource.TryGetValue(_audioSource, out var successor) && successor != this ? successor : null;
+            }
+        }
 
         internal void Tick()
         {
@@ -121,9 +150,23 @@ namespace Framework.Audio
             }
         }
 
+        internal void HostDeactivated()
+        {
+            _channel.FinishEvenIfPaused();
+        }
+
+        internal void HostDestroyed(AudioPlayerPump pump)
+        {
+            if (ReferenceEquals(pump, _pump))
+            {
+                _channel.StopAll();
+            }
+        }
+
         private void Supersede()
         {
             _channel.StopAll();
+            StopSource();
             if (_pump != null)
             {
                 UnityEngine.Object.Destroy(_pump);

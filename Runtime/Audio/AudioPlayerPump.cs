@@ -17,5 +17,18 @@ namespace Framework.Audio
         {
             _player?.Tick();
         }
+
+        private void OnDisable()
+        {
+            if (!gameObject.activeInHierarchy)
+            {
+                _player?.HostDeactivated();
+            }
+        }
+
+        private void OnDestroy()
+        {
+            _player?.HostDestroyed(this);
+        }
     }
 }

@@ -131,6 +131,7 @@ namespace Framework.Tasks
             }
 
             IsSkip = true;
+            _isPlayingFeedback = false;
             StopWatching();
             State = GuidanceState.Completed;
             _audioPlayer?.Stop(this);
@@ -141,6 +142,7 @@ namespace Framework.Tasks
         public override void CancelTask()
         {
             StopWatching();
+            _isPlayingFeedback = false;
             State = GuidanceState.Idle;
             _audioPlayer?.Stop(this);
             Subtasks.TearDown(SubtaskFilter.All);
