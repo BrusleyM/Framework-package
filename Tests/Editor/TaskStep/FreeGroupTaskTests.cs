@@ -311,6 +311,106 @@ namespace Framework.Sequencing.Tests
             Assert.That(innerTask.HintShowCount, Is.EqualTo(1));
         }
 
+        [Test]
+        public void The_completion_order_lists_the_tasks_as_they_were_finished_and_positions_start_at_one()
+        {
+            _group.StartTask();
+
+            _second.Finish();
+            _first.Finish();
+
+            Assert.That(_group.CompletionOrder, Is.EqualTo(new List<Task> { _second, _first }));
+            Assert.That(_group.PositionOf(_second), Is.EqualTo(1));
+            Assert.That(_group.PositionOf(_first), Is.EqualTo(2));
+        }
+
+        [Test]
+        public void A_task_that_is_not_finished_yet_has_position_zero()
+        {
+            _group.StartTask();
+
+            _first.Finish();
+
+            Assert.That(_group.PositionOf(_second), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Each_finished_task_reports_its_position_as_it_completes()
+        {
+            var reports = new List<string>();
+            _group.OnTaskCompletedAtPosition.AddListener((task, position) => reports.Add(position + ":" + (task == _first ? "first" : "second")));
+            _group.StartTask();
+
+            _second.Finish();
+            _first.Finish();
+
+            Assert.That(reports, Is.EqualTo(new List<string> { "1:second", "2:first" }));
+        }
+
+        [Test]
+        public void Finishing_in_the_listed_order_raises_the_in_order_event_once_at_the_end()
+        {
+            var inOrder = 0;
+            var outOfOrder = 0;
+            _group.OnCompletedInListedOrder.AddListener(() => inOrder++);
+            _group.OnCompletedOutOfOrder.AddListener(() => outOfOrder++);
+            _group.StartTask();
+
+            _first.Finish();
+            var raisedEarly = inOrder;
+            _second.Finish();
+
+            Assert.That(raisedEarly, Is.EqualTo(0));
+            Assert.That(inOrder, Is.EqualTo(1));
+            Assert.That(outOfOrder, Is.EqualTo(0));
+            Assert.That(_group.WasCompletedInListedOrder, Is.True);
+        }
+
+        [Test]
+        public void Finishing_against_the_listed_order_raises_the_out_of_order_event()
+        {
+            var inOrder = 0;
+            var outOfOrder = 0;
+            _group.OnCompletedInListedOrder.AddListener(() => inOrder++);
+            _group.OnCompletedOutOfOrder.AddListener(() => outOfOrder++);
+            _group.StartTask();
+
+            _second.Finish();
+            _first.Finish();
+
+            Assert.That(inOrder, Is.EqualTo(0));
+            Assert.That(outOfOrder, Is.EqualTo(1));
+            Assert.That(_group.WasCompletedInListedOrder, Is.False);
+        }
+
+        [Test]
+        public void Starting_again_clears_the_recorded_order()
+        {
+            _group.StartTask();
+            _second.Finish();
+            _first.Finish();
+
+            _group.Prepare();
+            _group.StartTask();
+
+            Assert.That(_group.CompletionOrder, Is.Empty);
+        }
+
+        [Test]
+        public void Skipped_tasks_are_left_out_of_the_order_and_no_order_event_is_raised()
+        {
+            var raised = 0;
+            _group.OnCompletedInListedOrder.AddListener(() => raised++);
+            _group.OnCompletedOutOfOrder.AddListener(() => raised++);
+            _group.StartTask();
+            _first.Finish();
+
+            _group.Skip();
+
+            Assert.That(_group.CompletionOrder, Is.EqualTo(new List<Task> { _first }));
+            Assert.That(raised, Is.EqualTo(0));
+        }
+
         private static void Assign(FreeGroupTask group, params Task[] tasks)
         {
             var serialized = new SerializedObject(group);

@@ -1,4 +1,5 @@
 using Framework.Sequencing;
+using Framework.Tasks;
 using UnityEngine;
 
 namespace FrameworkTest
@@ -67,8 +68,24 @@ namespace FrameworkTest
             }
         }
 
+#if ENABLE_LEGACY_INPUT_MANAGER
+        private void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.H))
+            {
+                HintButtonPressed();
+            }
+        }
+#endif
+
         public void HintButtonPressed()
         {
+            if (_currentSequentialTask != null && _currentSequentialTask.CurrentTask is FreeGroupTask freeGroup)
+            {
+                freeGroup.RequestHint();
+                return;
+            }
+
             if (_currentMode == GameMode.LetMeTry)
             {
                 _currentSequentialTask?.CurrentTask?.Skip();

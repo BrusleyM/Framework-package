@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Framework.Audio;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -12,28 +13,55 @@ namespace Framework.Tasks
         [SerializeField]
         private float _hintAfterIdleSeconds;
         [SerializeField]
+        private MyClip _feedbackAudio;
+        [SerializeField]
+        private MyClip _outOfOrderFeedbackAudio;
+        [SerializeField]
+        private UnityEvent _onCompletedInListedOrder = new UnityEvent();
+        [SerializeField]
+        private UnityEvent _onCompletedOutOfOrder = new UnityEvent();
+        [SerializeField]
+        private UnityEvent<Task, int> _onTaskCompletedAtPosition = new UnityEvent<Task, int>();
+        [SerializeField]
         private UnityEvent<Task> _onTaskCompleted = new UnityEvent<Task>();
         [SerializeField]
         private UnityEvent<Task> _onHintShown = new UnityEvent<Task>();
 
         private readonly List<Task> _running = new List<Task>();
         private readonly HashSet<Task> _acknowledged = new HashSet<Task>();
+        private readonly List<Task> _completionOrder = new List<Task>();
         private Task _hintedTask;
         private Coroutine _idleHint;
         private bool _isRunning;
         private bool _isStarting;
+        private bool _hasPlayedFeedback;
 
         public UnityEvent<Task> OnTaskCompleted => _onTaskCompleted;
+        public UnityEvent<Task, int> OnTaskCompletedAtPosition => _onTaskCompletedAtPosition;
+        public UnityEvent OnCompletedInListedOrder => _onCompletedInListedOrder;
+        public UnityEvent OnCompletedOutOfOrder => _onCompletedOutOfOrder;
+        public IReadOnlyList<Task> CompletionOrder => _completionOrder;
+        public bool WasCompletedInListedOrder => CompletionMatchesListedOrder();
         public UnityEvent<Task> OnHintShown => _onHintShown;
         public IReadOnlyList<Task> Tasks => _tasks;
         public Task HintedTask => _hintedTask;
         public int CompletedCount => _acknowledged.Count;
         public int OpenCount => _running.Count - _acknowledged.Count;
 
+        public int PositionOf(Task task)
+        {
+            return _completionOrder.IndexOf(task) + 1;
+        }
+
         public override bool IsSettling
         {
             get
             {
+                if (_hasPlayedFeedback && (_audioPlayer?.IsPlaying() ?? false))
+                {
+                    return true;
+                }
+
                 foreach (var task in _running)
                 {
                     if (task.IsSettling)
@@ -49,6 +77,7 @@ namespace Framework.Tasks
         {
             StopEverythingInProgress();
             _hintedTask = null;
+            _hasPlayedFeedback = false;
             _isRunning = true;
             CollectDistinctTasks();
             _isStarting = true;
@@ -129,6 +158,7 @@ namespace Framework.Tasks
             StopEverythingInProgress();
             _running.Clear();
             _acknowledged.Clear();
+            _completionOrder.Clear();
         }
 
         private void OnEnable()
@@ -160,6 +190,7 @@ namespace Framework.Tasks
         {
             _running.Clear();
             _acknowledged.Clear();
+            _completionOrder.Clear();
             foreach (var task in _tasks)
             {
                 if (task != null && task != this && !_running.Contains(task))
@@ -212,8 +243,14 @@ namespace Framework.Tasks
                 task.HideHint();
             }
 
+            if (!task.IsSkip)
+            {
+                _completionOrder.Add(task);
+            }
+
             task.OnCompleteTask.Invoke();
             _onTaskCompleted.Invoke(task);
+            _onTaskCompletedAtPosition.Invoke(task, PositionOf(task));
             if (_isRunning)
             {
                 RestartIdleHintTimer();
@@ -243,7 +280,47 @@ namespace Framework.Tasks
                 }
             }
 
+            AnnounceOrderAndPlayFeedback();
             TaskComplete();
+        }
+
+        private void AnnounceOrderAndPlayFeedback()
+        {
+            if (IsSkip)
+            {
+                return;
+            }
+
+            var inOrder = CompletionMatchesListedOrder();
+            var clip = !inOrder && _outOfOrderFeedbackAudio != null && _outOfOrderFeedbackAudio.clip != null
+                ? _outOfOrderFeedbackAudio
+                : _feedbackAudio;
+            if (clip != null && clip.clip != null)
+            {
+                _audioPlayer?.LoadAndPlay(clip.clip);
+                _hasPlayedFeedback = true;
+            }
+
+            (inOrder ? _onCompletedInListedOrder : _onCompletedOutOfOrder).Invoke();
+        }
+
+        private bool CompletionMatchesListedOrder()
+        {
+            var position = 0;
+            foreach (var task in _running)
+            {
+                if (task.IsSkip)
+                {
+                    continue;
+                }
+
+                if (position >= _completionOrder.Count || _completionOrder[position] != task)
+                {
+                    return false;
+                }
+                position++;
+            }
+            return position == _completionOrder.Count;
         }
 
         private Task FirstOpenTask()
