@@ -459,6 +459,85 @@ namespace Framework.Sequencing.Tests
             CollectionAssert.AreEqual(new List<Task> { first, second }, new List<Task>(_sequence.CompletionOrder));
         }
 
+        [UnityTest]
+        public IEnumerator Two_mode_changes_in_the_same_frame_end_up_running_in_the_last_mode()
+        {
+            var task = AddTask("only");
+            _sequence.Run();
+            yield return null;
+
+            _sequence.SetMode(GuidanceMode.Unguided);
+            _sequence.SetMode(GuidanceMode.Guided);
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(_sequence.IsRunning);
+            Assert.AreEqual(GuidanceMode.Guided, _sequence.Mode);
+            Assert.AreEqual(2, task.StartCount);
+        }
+
+        [UnityTest]
+        public IEnumerator Resuming_in_the_frame_after_a_mode_change_leaves_the_restarted_run_running()
+        {
+            AddTask("only");
+            _sequence.Run();
+            yield return null;
+            _sequence.Pause();
+
+            _sequence.SetMode(GuidanceMode.Unguided);
+            _sequence.Resume();
+            yield return null;
+            yield return null;
+
+            Assert.AreEqual(SequenceState.Running, _sequence.Runner.State);
+        }
+
+        [UnityTest]
+        public IEnumerator Pausing_in_the_frame_after_a_mode_change_leaves_the_restarted_run_paused()
+        {
+            AddTask("only");
+            _sequence.Run();
+            yield return null;
+
+            _sequence.SetMode(GuidanceMode.Unguided);
+            _sequence.Pause();
+            yield return null;
+            yield return null;
+
+            Assert.AreEqual(SequenceState.Paused, _sequence.Runner.State);
+        }
+
+        [UnityTest]
+        public IEnumerator Restarting_in_the_frame_after_a_mode_change_does_not_run_the_old_mode_again()
+        {
+            var task = AddTask("only");
+            _sequence.Run();
+            yield return null;
+
+            _sequence.SetMode(GuidanceMode.Unguided);
+            _sequence.Restart();
+            yield return null;
+            yield return null;
+
+            Assert.AreEqual(1, task.StartCount);
+            Assert.AreEqual(1, task.UnguidedStartCount);
+        }
+
+        [UnityTest]
+        public IEnumerator Playing_a_custom_runner_forgets_the_completion_order_of_the_earlier_unguided_run()
+        {
+            var task = AddTask("only");
+            _sequence.SetMode(GuidanceMode.Unguided);
+            _sequence.Run();
+            yield return null;
+            task.Finish();
+            yield return null;
+
+            _sequence.Play(Sequence.Named("custom").Wait(5f).Build());
+
+            Assert.IsNull(_sequence.CompletionOrder);
+        }
+
         private ProbeTask AddStageWithTask(string stageName)
         {
             var stageObject = new GameObject(stageName);
