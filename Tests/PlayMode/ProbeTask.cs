@@ -34,7 +34,6 @@ namespace Framework.Sequencing.Tests
     internal sealed class GuidanceOnlyProbeTask : Task, IGuidanceOnlyTask
     {
         public int StartCount { get; private set; }
-        public int UnguidedStartCount { get; private set; }
 
         public override void StartTask() => StartCount++;
     }

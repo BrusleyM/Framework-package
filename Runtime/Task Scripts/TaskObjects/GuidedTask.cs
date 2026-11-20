@@ -22,7 +22,7 @@ namespace Framework.Tasks
 
         public GuidanceState State { get; private set; }
         public GameObjectTask CurrentSubtask => _sequencer?.Current;
-        public bool IsSettling => IsFeedbackAudioPlaying();
+        public virtual bool IsSettling => IsFeedbackAudioPlaying();
 
         private SubtaskSequencer Subtasks
         {
@@ -56,13 +56,13 @@ namespace Framework.Tasks
             Subtasks.Start(SubtaskFilter.All);
         }
 
-        public void StartTaskUnguided()
+        public virtual void StartTaskUnguided()
         {
             Restart(GuidanceState.Unguided);
             Subtasks.RunSetup();
         }
 
-        public void ShowHint()
+        public virtual void ShowHint()
         {
             if (State != GuidanceState.Unguided || IsComplete)
             {
@@ -74,7 +74,7 @@ namespace Framework.Tasks
             Subtasks.Start(SubtaskFilter.GuidanceOnly);
         }
 
-        public void HideHint()
+        public virtual void HideHint()
         {
             if (State != GuidanceState.Hinting)
             {
@@ -85,13 +85,13 @@ namespace Framework.Tasks
             _audioPlayer?.Stop(this);
         }
 
-        public void PauseTask()
+        public virtual void PauseTask()
         {
             _isPaused = true;
             _audioPlayer?.Pause(this);
         }
 
-        public void ResumeTask()
+        public virtual void ResumeTask()
         {
             _isPaused = false;
             _audioPlayer?.Resume(this);

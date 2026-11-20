@@ -31,12 +31,12 @@ namespace Framework.Tasks
             PlayNextClipOrComplete();
         }
 
-        public void PauseTask()
+        public virtual void PauseTask()
         {
             _audioPlayer?.Pause(this);
         }
 
-        public void ResumeTask()
+        public virtual void ResumeTask()
         {
             _audioPlayer?.Resume(this);
         }
