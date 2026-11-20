@@ -82,19 +82,19 @@ namespace Framework.Tasks
             }
 
             StopHint();
-            _audioPlayer?.Stop();
+            _audioPlayer?.Stop(this);
         }
 
         public void PauseTask()
         {
             _isPaused = true;
-            _audioPlayer?.Pause();
+            _audioPlayer?.Pause(this);
         }
 
         public void ResumeTask()
         {
             _isPaused = false;
-            _audioPlayer?.Resume();
+            _audioPlayer?.Resume(this);
         }
 
         public override void TaskComplete()
@@ -110,7 +110,7 @@ namespace Framework.Tasks
             if (wasHinting)
             {
                 Subtasks.TearDown(SubtaskFilter.GuidanceOnly);
-                _audioPlayer?.Stop();
+                _audioPlayer?.Stop(this);
             }
 
             State = GuidanceState.Completed;
@@ -132,7 +132,7 @@ namespace Framework.Tasks
             IsSkip = true;
             StopWatching();
             State = GuidanceState.Completed;
-            _audioPlayer?.Stop();
+            _audioPlayer?.Stop(this);
             Subtasks.TearDown(SubtaskFilter.All);
             MarkComplete();
         }
@@ -141,7 +141,7 @@ namespace Framework.Tasks
         {
             StopWatching();
             State = GuidanceState.Idle;
-            _audioPlayer?.Stop();
+            _audioPlayer?.Stop(this);
             Subtasks.TearDown(SubtaskFilter.All);
             ResetCompletionTracking();
             IsDoing = false;
@@ -149,7 +149,7 @@ namespace Framework.Tasks
 
         public bool IsFeedbackAudioPlaying()
         {
-            return _audioPlayer?.IsPlaying() ?? false;
+            return _audioPlayer?.IsPlayingFor(this) ?? false;
         }
 
         protected abstract void BeginCompletionTracking();
@@ -191,14 +191,17 @@ namespace Framework.Tasks
 
         private void PlayInstructionalAudio()
         {
-            _audioPlayer?.LoadAndPlay(_instructionalAudio?.clip);
+            if (_instructionalAudio != null && _instructionalAudio.clip != null)
+            {
+                _audioPlayer?.Play(_instructionalAudio.clip, this);
+            }
         }
 
         private void PlayFeedbackAudio()
         {
-            if (!IsSkip && _feedbackAudioClip != null)
+            if (!IsSkip && _feedbackAudioClip != null && _feedbackAudioClip.clip != null)
             {
-                _audioPlayer?.LoadAndPlay(_feedbackAudioClip.clip);
+                _audioPlayer?.Play(_feedbackAudioClip.clip, this);
             }
         }
 

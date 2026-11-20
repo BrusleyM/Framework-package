@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using Framework.Audio;
 using UnityEngine;
@@ -10,9 +9,7 @@ namespace Framework.Tasks
         [SerializeField]
         private List<MyClip> _audioClips = new List<MyClip>();
 
-        private Coroutine _playback;
-
-        private bool _isPaused;
+        private int _nextClipIndex;
 
         public override void StartTask()
         {
@@ -30,20 +27,18 @@ namespace Framework.Tasks
                 return;
             }
 
-            _isPaused = false;
-            _playback = StartCoroutine(PlayClipsOneAfterAnother());
+            _nextClipIndex = 0;
+            PlayNextClipOrComplete();
         }
 
         public void PauseTask()
         {
-            _isPaused = true;
-            _audioPlayer?.Pause();
+            _audioPlayer?.Pause(this);
         }
 
         public void ResumeTask()
         {
-            _isPaused = false;
-            _audioPlayer?.Resume();
+            _audioPlayer?.Resume(this);
         }
 
         public override void Skip()
@@ -54,30 +49,21 @@ namespace Framework.Tasks
 
         public override void CancelTask()
         {
-            if (_playback != null)
-            {
-                StopCoroutine(_playback);
-                _playback = null;
-            }
-
-            _isPaused = false;
-            _audioPlayer?.Stop();
+            _audioPlayer?.Stop(this);
         }
 
-        private IEnumerator PlayClipsOneAfterAnother()
+        private void PlayNextClipOrComplete()
         {
-            foreach (var clip in _audioClips)
+            while (_nextClipIndex < _audioClips.Count)
             {
-                if (clip == null)
+                var clip = _audioClips[_nextClipIndex++];
+                if (clip != null && clip.clip != null)
                 {
-                    continue;
+                    _audioPlayer.Play(clip.clip, this, PlayNextClipOrComplete);
+                    return;
                 }
-
-                _audioPlayer.LoadAndPlay(clip.clip);
-                yield return new WaitWhile(() => _isPaused || _audioPlayer.IsPlaying());
             }
 
-            _playback = null;
             TaskComplete();
         }
     }

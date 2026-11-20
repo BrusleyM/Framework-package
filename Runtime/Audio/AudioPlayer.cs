@@ -1,45 +1,87 @@
+using System;
 using UnityEngine;
 
 namespace Framework.Audio
 {
-    public class AudioPlayer
+    public sealed class AudioPlayer : IVoicePlayer
     {
-        private AudioSource audioSource;
+        private readonly AudioSource _audioSource;
+        private readonly VoiceChannel _channel = new VoiceChannel();
+        private readonly AudioPlayerPump _pump;
 
         public AudioPlayer(AudioSource audioSource)
         {
-            this.audioSource = audioSource;
+            _audioSource = audioSource;
+            _pump = audioSource.gameObject.AddComponent<AudioPlayerPump>();
+            _pump.Bind(this);
         }
 
-        public void LoadAndPlay(AudioClip clip)
+        public bool IsPlaying => _channel.IsPlaying;
+
+        public bool IsPlayingFor(object owner)
         {
-            audioSource.Stop();
-            audioSource.clip = clip;
-            audioSource.Play();
-        }
-        public bool IsPlaying()
-        {
-            return audioSource.isPlaying;
-        }
-        public bool IsPlaying(AudioClip clip)
-        {
-            return audioSource.isPlaying && audioSource.clip == clip;
+            return _channel.IsPlayingFor(owner);
         }
 
-        public void Pause()
+        public void Play(AudioClip clip, object owner, Action onFinished = null)
         {
-            audioSource.Pause();
+            _audioSource.Stop();
+            _channel.Begin(owner, onFinished);
+            _audioSource.clip = clip;
+            if (clip != null)
+            {
+                _audioSource.Play();
+            }
+
+            _pump.enabled = true;
         }
 
-        public void Resume()
+        public void Pause(object owner)
         {
-            audioSource.UnPause();
+            if (_channel.Pause(owner))
+            {
+                _audioSource.Pause();
+            }
         }
 
-        public void Stop()
+        public void Resume(object owner)
         {
-            audioSource.Stop();
+            if (_channel.Resume(owner))
+            {
+                _audioSource.UnPause();
+            }
         }
 
+        public void Stop(object owner)
+        {
+            if (_channel.Stop(owner))
+            {
+                _audioSource.Stop();
+                _pump.enabled = false;
+            }
+        }
+
+        public void StopAll()
+        {
+            if (_channel.StopAll())
+            {
+                _audioSource.Stop();
+                _pump.enabled = false;
+            }
+        }
+
+        internal void Tick()
+        {
+            if (!_channel.IsPlaying || _channel.IsPaused || _audioSource.isPlaying || !Application.isFocused)
+            {
+                return;
+            }
+
+            _channel.Finish();
+            if (!_channel.IsPlaying)
+            {
+                _pump.enabled = false;
+            }
+        }
     }
 }

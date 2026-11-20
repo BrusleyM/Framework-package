@@ -5,10 +5,10 @@ namespace Framework.Sequencing
 {
     public sealed class TaskStep : StepBase
     {
-        private readonly AudioPlayer _audioPlayer;
+        private readonly IVoicePlayer _audioPlayer;
         private bool _taskCompletedButStillSettling;
 
-        public TaskStep(Task task, AudioPlayer audioPlayer) : base(task.TaskName)
+        public TaskStep(Task task, IVoicePlayer audioPlayer) : base(task.TaskName)
         {
             Task = task;
             _audioPlayer = audioPlayer;

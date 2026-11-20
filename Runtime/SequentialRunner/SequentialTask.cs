@@ -27,7 +27,7 @@ namespace Framework.Sequencing
 
         private SequenceRunner _runner;
         private Coroutine _clock;
-        private AudioPlayer _audioPlayer;
+        private IVoicePlayer _audioPlayer;
         private readonly List<UnguidedStep> _unguidedSteps = new List<UnguidedStep>();
         private GuidanceMode _appliedMode;
         private bool _hasApplied;
@@ -163,6 +163,11 @@ namespace Framework.Sequencing
             }
         }
 
+        public void UseVoicePlayer(IVoicePlayer voicePlayer)
+        {
+            _audioPlayer = voicePlayer;
+        }
+
         public bool RequestHint() => ActiveUnguidedStep?.RequestHint() ?? false;
 
         public void Pause()
@@ -267,7 +272,7 @@ namespace Framework.Sequencing
             return new SequenceRunner(name, steps);
         }
 
-        private static bool HasClips(List<MyClip> clips, AudioPlayer audioPlayer)
+        private static bool HasClips(List<MyClip> clips, IVoicePlayer audioPlayer)
         {
             if (audioPlayer == null)
             {
@@ -284,7 +289,7 @@ namespace Framework.Sequencing
             return false;
         }
 
-        private List<ISequenceStep> TaskAndStageSteps(AudioPlayer audioPlayer)
+        private List<ISequenceStep> TaskAndStageSteps(IVoicePlayer audioPlayer)
         {
             if (_stages.Count == 0)
             {
@@ -304,7 +309,7 @@ namespace Framework.Sequencing
             return stageSteps;
         }
 
-        private List<ISequenceStep> StepsFor(string stepName, IEnumerable<Task> tasks, AudioPlayer audioPlayer)
+        private List<ISequenceStep> StepsFor(string stepName, IEnumerable<Task> tasks, IVoicePlayer audioPlayer)
         {
             var steps = new List<ISequenceStep>();
             if (_mode == GuidanceMode.Unguided)
@@ -328,7 +333,7 @@ namespace Framework.Sequencing
             return steps;
         }
 
-        private AudioPlayer ObtainAudioPlayer()
+        private IVoicePlayer ObtainAudioPlayer()
         {
             if (_audioPlayer == null && _audioSource != null)
             {
