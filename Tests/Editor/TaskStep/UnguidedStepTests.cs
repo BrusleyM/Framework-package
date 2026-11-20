@@ -8,16 +8,16 @@ namespace Framework.Sequencing.Tests
     public class UnguidedStepTests
     {
         private GameObject _host;
-        private HintableTask _first;
-        private HintableTask _second;
+        private RecordingTask _first;
+        private RecordingTask _second;
         private int _finishes;
 
         [SetUp]
         public void SetUp()
         {
             _host = new GameObject("host");
-            _first = _host.AddComponent<HintableTask>();
-            _second = _host.AddComponent<HintableTask>();
+            _first = _host.AddComponent<RecordingTask>();
+            _second = _host.AddComponent<RecordingTask>();
             _finishes = 0;
         }
 
@@ -489,58 +489,6 @@ namespace Framework.Sequencing.Tests
             var step = new UnguidedStep("free", new Task[] { _first, _second }, null, hintAfterIdleSeconds);
             step.Finished += () => _finishes++;
             return step;
-        }
-
-        private sealed class HintableTask : Task, IUnguidedTask, IHintable, IPausableTask, ISettlingTask
-        {
-            public int GuidedStartCount { get; private set; }
-            public int UnguidedStartCount { get; private set; }
-            public int CancelCount { get; private set; }
-            public int HintShowCount { get; private set; }
-            public int HintHideCount { get; private set; }
-            public int PauseCount { get; private set; }
-            public int ResumeCount { get; private set; }
-            public bool FinishWhenStarted { get; set; }
-            public bool Settling { get; set; }
-
-            public bool IsSettling => Settling;
-
-            public void Finish() => TaskComplete();
-
-            public override void StartTask() => GuidedStartCount++;
-
-            public void StartTaskUnguided()
-            {
-                UnguidedStartCount++;
-                if (FinishWhenStarted)
-                {
-                    TaskComplete();
-                }
-            }
-
-            public override void CancelTask() => CancelCount++;
-
-            public void PauseTask() => PauseCount++;
-
-            public void ResumeTask() => ResumeCount++;
-
-            public void ShowHint() => HintShowCount++;
-
-            public void HideHint() => HintHideCount++;
-        }
-
-        private sealed class PlainTask : Task
-        {
-            public int StartCount { get; private set; }
-
-            public override void StartTask() => StartCount++;
-        }
-
-        private sealed class GuidanceOnlyTask : Task, IGuidanceOnlyTask
-        {
-            public int StartCount { get; private set; }
-
-            public override void StartTask() => StartCount++;
         }
     }
 }

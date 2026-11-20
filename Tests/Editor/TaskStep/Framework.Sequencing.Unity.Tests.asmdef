@@ -5,6 +5,7 @@
         "Framework.Sequencing.Core",
         "Framework.Sequencing.Unity",
         "Framework.Tasks",
+        "Framework.Sequencing.TestSupport",
         "Framework.Tasks.Interaction",
         "Framework.Audio",
         "Framework.CheckPoints",

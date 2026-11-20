@@ -191,7 +191,7 @@ The package check fails if `requiresCore` is missing or core is listed under `de
 
 ## Tests
 
-`Tests/Editor` holds EditMode tests for the core, the task adapter and the conditions. `Tests/PlayMode` runs `SequentialTask` in play mode with tasks built in code. Keep the package under `Assets`, or add it to `testables`, to run them.
+`Tests/Editor` holds EditMode tests for the core, the task adapter and the conditions. `Tests/PlayMode` runs `SequentialTask` in play mode with tasks built in code. Keep the package under `Assets`, or add it to `testables`, to run them. `Tests/Support` is the shared test kit (`Framework.Sequencing.TestSupport`): `RecordingTask`, `PlainTask`, `GuidanceOnlyTask`, `ManualSubtask`, `ThrowingSubtask` and `Await.Until`, which waits for a condition with a timeout. Use it instead of a fixed `WaitForSeconds` when a test waits for something to happen; a fixed wait is only right to show that nothing happens.
 
 ## Continuous integration and releases
 
