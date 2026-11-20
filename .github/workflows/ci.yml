@@ -139,6 +139,7 @@ jobs:
           projectPath: .host
           unityVersion: ${{ matrix.unity }}
           testMode: all
+          cliVersion: v0.1.76
           artifactsPath: test-results~
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: Unity ${{ matrix.name }} test results
